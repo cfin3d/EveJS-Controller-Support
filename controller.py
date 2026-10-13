@@ -19,6 +19,8 @@ BUTTONS = [('LT', 0x10000), ('RT', 0x20000), ('LB', LB), ('RB', RB),
            ('A', 0x1000), ('B', 0x2000), ('X', 0x4000), ('Y', 0x8000),
            ('UP', 1), ('DOWN', 2), ('LEFT', 4), ('RIGHT', 8),
            ('VIEW', 0x20), ('MENU', 0x10), ('LS', 0x40), ('RS', RS)]
+BUTTONS += [('R4',1<<18),('L4',1<<19),('R5',1<<20),('L5',1<<21),('TOUCHPAD',1<<22),
+            ('MISC1',1<<23),('MISC2',1<<24),('MISC3',1<<25),('MISC4',1<<26),('MISC5',1<<27),('MISC6',1<<28),('GUIDE',1<<29)]
 BUTTON_BITS = dict(BUTTONS)
 ACTIONS = [('cursor', 'Move Cursor'), ('cameraPan', 'Pan Camera'),
            ('cameraZoom', 'Zoom Camera'), ('leftClick', 'Left-Click / Target Radial'),
@@ -26,7 +28,7 @@ ACTIONS = [('cursor', 'Move Cursor'), ('cameraPan', 'Pan Camera'),
            ('neocom', 'Open Neocom')]
 DEFAULT_BINDINGS = dict(cursor='LEFT_STICK', cameraPan='RIGHT_STICK',
                         cameraZoom='LT+RIGHT_STICK_Y', leftClick='RB', rightClick='LB', fly='RS', stop='RS',neocom='VIEW')
-DEFAULTS = dict(schemaVersion=1, controllerIndex=-1, deadzone=.20, cursorSpeed=1100,
+DEFAULTS = dict(schemaVersion=1, controllerIndex=-1, controllerIcons='auto', deadzone=.20, cursorSpeed=1100,
                 cameraSpeed=800, cursorRing=True, cursorSnap=True, snapRadius=28,
                 snapMaxSpeed=250, clickHoldMilliseconds=500, rightStickStopMilliseconds=1000,
                 invertCameraPan=False, cameraZoomSpeed=.8, triggerThreshold=40,
@@ -160,7 +162,7 @@ def preferences(document):
     result.update(document)
     if result['schemaVersion'] != 1:
         raise ValueError('Unsupported preferences version')
-    ranges = dict(controllerIndex=(-1, 3), deadzone=(.05, .5), cursorSpeed=(100, 4000),
+    ranges = dict(controllerIndex=(-1, 15), deadzone=(.05, .5), cursorSpeed=(100, 4000),
                   cameraSpeed=(100, 4000), snapRadius=(8, 64), snapMaxSpeed=(50, 600),
                   clickHoldMilliseconds=(200, 2000), rightStickStopMilliseconds=(500, 3000),
                   cameraZoomSpeed=(.1, 3.), triggerThreshold=(10, 240))
@@ -175,6 +177,8 @@ def preferences(document):
     for name in ('cursorRing', 'cursorSnap', 'invertCameraPan'):
         if not isinstance(result[name], bool):
             raise ValueError('Invalid ' + name)
+    if result['controllerIcons'] not in ('auto','xbox','ps4','ps5','steam'):
+        raise ValueError('Invalid Controller Icon Style')
     incoming=document.get('bindings', {})
     if isinstance(incoming,dict) and 'neocom' not in incoming:
         legacy=list(incoming.values())
@@ -436,7 +440,7 @@ class _MouseHook(ctypes.Structure):
 
 
 class WindowsInput(object):
-    def __init__(self):
+    def __init__(self,directory=None,device_factory=None):
         self.user = ctypes.WinDLL('user32', use_last_error=True)
         self.user.GetForegroundWindow.restype = ctypes.c_void_p
         self.user.GetWindowThreadProcessId.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint32)]
@@ -463,10 +467,15 @@ class WindowsInput(object):
                 break
             except (OSError, AttributeError):
                 pass
-        if self.xinput is None:
+        self.devices=None
+        if device_factory is not None:
+            try:self.devices=device_factory(directory)
+            except Exception as error:print('EVEJS_CONTROLLER:SDL unavailable; XInput fallback: '+type(error).__name__)
+        if self.xinput is None and self.devices is None:
             raise RuntimeError('Controller input API unavailable')
-        self.xinput.argtypes = [ctypes.c_uint32, ctypes.POINTER(_State)]
-        self.xinput.restype = ctypes.c_uint32
+        if self.xinput is not None:
+            self.xinput.argtypes = [ctypes.c_uint32, ctypes.POINTER(_State)]
+            self.xinput.restype = ctypes.c_uint32
 
     def start_listener(self):
         callback_type = ctypes.WINFUNCTYPE(ctypes.c_ssize_t, ctypes.c_int, ctypes.c_size_t, ctypes.c_void_p)
@@ -521,6 +530,10 @@ class WindowsInput(object):
         self.mouse_position = None
 
     def read(self, index):
+        if self.devices is not None:
+            sample,changed=self.devices.read(index)
+            self.selected=self.devices.selected
+            return sample,changed
         if index != -1:
             slots = [index]
         else:
@@ -536,6 +549,7 @@ class WindowsInput(object):
         return None, False
 
     def scan(self):
+        if self.devices is not None:return self.devices.scan()
         connected = {}
         for slot in range(4):
             state = _State()
@@ -543,6 +557,13 @@ class WindowsInput(object):
                 p = state.pad
                 connected[slot] = (p.buttons, p.lx, p.ly, p.rx, p.ry, p.lt, p.rt)
         return connected
+
+    def device_info(self):
+        if self.devices is not None:return self.devices.device_info()
+        return dict(name='Controller %d'%(self.selected+1) if self.selected>=0 else 'No Controller Connected',style='xbox',kind='xbox',backend='XInput')
+
+    def close_devices(self):
+        if self.devices is not None:self.devices.close()
 
     def foreground(self):
         pid = ctypes.c_uint32()
@@ -694,7 +715,12 @@ class CursorUi(object):
 class Controller(object):
     def __init__(self, directory, ui, helpers, native=None, overlay=None, settings_api=None):
         self.directory, self.ui, self.helpers = directory, ui, helpers
-        self.native, self.overlay = native or WindowsInput(), overlay or CursorUi(ui, helpers)
+        self.native = native or (WindowsInput(directory,helpers['_Gamepads']) if '_Gamepads' in helpers else WindowsInput())
+        try:self.overlay=overlay or CursorUi(ui,helpers)
+        except Exception:
+            closer=getattr(self.native,'close_devices',None)
+            if closer:closer()
+            raise
         self.mode, self.gestures, self.magnet = InputMode(), Gestures(), Magnet()
         self.motion = CursorMotion()
         self.active, self.settings, self.last_settings, self.last_tick = True, preferences({}), -1., time.time()
@@ -712,6 +738,8 @@ class Controller(object):
             try:
                 self.native.release()
             finally:
+                closer=getattr(self.native,'close_devices',None)
+                if closer:closer()
                 self.overlay.close()
             raise
 
@@ -1017,6 +1045,8 @@ class Controller(object):
                     if listener:
                         listener()
                 finally:
+                    closer=getattr(self.native,'close_devices',None)
+                    if closer:closer()
                     try:
                         if self.menu:
                             self.menu.close()

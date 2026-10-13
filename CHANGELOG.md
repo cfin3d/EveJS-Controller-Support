@@ -6,6 +6,11 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 
 ### Added
 
+- Bundled SDL 3.4.18 gamepad input inside the EVE process, with direct PlayStation USB/Bluetooth drivers, Steam controller/Steam Deck driver paths, and Steam Input gamepad output. Normalize all devices to the existing positional bindings and retain XInput fallback if the bundled backend cannot initialize.
+- Automatic controller-family icons and names in binding rows, conflict dialogs, and radial prompts. Add uniform white PlayStation SVG symbols and native transparent textures, with distinct Share/Create labels for detected DualShock 4/DualSense devices.
+- **Button Icons** selection with Auto-Detect, Xbox, PlayStation 4, PlayStation 5, and Steam overrides for virtual devices whose physical identity is hidden by an input mapper. Include the setting in saved profiles and launcher configuration.
+- Capture independently exposed rear/paddle buttons, touchpad clicks, and additional digital inputs through the existing custom binding editor without assigning new default gameplay actions.
+- Named controller selection across up to 16 slots, activity-based automatic selection, hot-plug cleanup, and device-instance change detection when a slot is reused.
 - Show the most recently highlighted radial range action beneath the **Range** prompt, followed by its native formatted distance. Update the distance with each adjustment, retain the readout when moving away, and reserve additional space below the wheel to keep the prompts on screen.
 - Select/View opens native Neocom controller navigation, with a remappable **Open Neocom** action in Controller settings. D-pad Up/Down selects items immediately with bounded repeat; Right enters submenus and Left restores the parent selection.
 - Smooth 140 ms cursor transitions bounded to the active Neocom panel and native item highlighting. Normal cursor movement, camera/ship commands, clicks, and custom actions pause until the menu closes.
@@ -45,6 +50,7 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 
 ### Changed
 
+- Package the controller backend and its runtime/license with the installable mod folder; no companion process or separate library installation is required. Mark PlayStation/Steam physical hardware and SteamOS/Proton coverage as requiring community testing.
 - Rename the shared timing control to **Click / Activation Hold** to cover normal clicks, radial opening, and Neocom A/B activation. Preserve its stored key and existing values.
 - Reformat Controller settings into spaced sections, paired half-width slider fields with separate value labels, and uniform action/input/clear columns. Apply matching rows to custom bindings and keep modifier/key selection in a compact two-column editor.
 - Include custom bindings in profiles and Restore Defaults while retaining existing device selection and saved profiles.
@@ -65,6 +71,7 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 
 ### Fixed
 
+- Release only owned gamepad handles/subsystem references and restore owned polling-event/hint settings on shutdown or initialization failure. Keep physical input handover, tagged synthetic mouse filtering, preferences, and existing gameplay bindings intact.
 - Preserve previously assigned Select/View inputs when adding the new default Neocom binding. Keep held controls from carrying actions across menu transitions; restart A confirmation when selection changes, prioritize B cancellation, and activate once per hold.
 - Temporarily suppress native Neocom hover expansion during controller navigation and restore owned hooks on selection, cancellation, physical input, focus loss, disconnection, settings/configuration changes, or session transitions.
 - Match the radial cursor to the normal cursor's 26 px white ring, white strokes, and 3 px white dot; remove its older dark outer circle while retaining circular bounds.

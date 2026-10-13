@@ -13,7 +13,9 @@ BUTTON_ICONS = dict(A='a', B='b', X='x', Y='y', LB='lb', RB='rb', LT='lt', RT='r
                     LS='left-stick', RS='right-stick', LEFT_STICK='left-stick', RIGHT_STICK='right-stick',
                     LEFT_STICK_Y='left-stick', RIGHT_STICK_Y='right-stick',
                     UP='dpad-up', DOWN='dpad-down', LEFT='dpad-left', RIGHT='dpad-right', VIEW='view', MENU='menu')
-PROFILE_KEYS = ('bindings', 'customBindings', 'deadzone', 'cursorSpeed', 'cameraSpeed', 'cameraZoomSpeed',
+BUTTON_ICONS.update((name,name.lower()) for name in ('R4','L4','R5','L5','TOUCHPAD','MISC1','MISC2','MISC3','MISC4','MISC5','MISC6','GUIDE'))
+PS_ICON_FILES=('cross','circle','square','triangle','l1','r1','l2','r2','l3','r3','create','share','select','start','options','ps','touchpad')
+PROFILE_KEYS = ('bindings', 'customBindings', 'controllerIcons', 'deadzone', 'cursorSpeed', 'cameraSpeed', 'cameraZoomSpeed',
                 'invertCameraPan', 'cursorRing', 'cursorSnap', 'snapRadius', 'snapMaxSpeed',
                 'clickHoldMilliseconds', 'rightStickStopMilliseconds', 'triggerThreshold')
 
@@ -78,7 +80,7 @@ def write_preferences(directory, patch, validate, expected=None):
 def prepare_button_icons(directory):
     import blue
     icons = {}
-    for name in set(BUTTON_ICONS.values()):
+    for name in set(BUTTON_ICONS.values()) | set('playstation/'+name for name in PS_ICON_FILES):
         resource = 'cache:/evejs-controller/buttons/' + name + '.png'
         destination = blue.paths.ResolvePathForWriting(resource)
         folder = os.path.dirname(destination)
@@ -143,6 +145,7 @@ class ControllerSettings(object):
         self.capture, self.identifying, self.ready, self.collected = None, False, False, set()
         self.deadline, self.last_scan, self.message_until = 0., -1., 0.
         self.selected_profile, self.closed, self.rendered_settings = None, False, None
+        self.rendered_style=None
         self.custom_draft = dict(id=None, modifier='NONE', key='F1', controller='')
         self.confirming = False
         self.original_tree, self.original_load = SystemMenu.__dict__['ConstructTreeData'], SystemMenu.__dict__['LoadPanel']
@@ -242,8 +245,21 @@ class ControllerSettings(object):
 
     def controller_options(self):
         selected = self.controller.settings['controllerIndex']
-        return [('Auto-Detect', -1)] + [('Controller %d%s' % (slot + 1, ' (Connected)' if slot in self.connected else ' (Disconnected)'), slot)
-                                      for slot in range(4) if slot in self.connected or slot == selected]
+        devices=getattr(getattr(self.controller.native,'devices',None),'metadata',{})
+        return [('Auto-Detect', -1)] + [('%s%s' % (('Controller %d: '%(slot+1)+devices[slot]['name']) if slot in devices else 'Controller %d'%(slot+1), ' (Connected)' if slot in self.connected else ' (Disconnected)'), slot)
+                                      for slot in range(16) if slot in self.connected or slot == selected]
+
+    def current_style(self):
+        function=self.controller.helpers.get('_ec_controller_style')
+        return (function(self.controller) if function else 'xbox',getattr(self.controller.native,'device_info',lambda:{})().get('kind',''))
+
+    def binding_title(self,value):
+        function=self.controller.helpers.get('_ec_button_name')
+        return function(self.controller,value) if function else display_binding(value)
+
+    def icon_name(self,token):
+        function=self.controller.helpers.get('_ec_button_icon')
+        return function(self.controller,token) if function else BUTTON_ICONS[token]
 
     def build(self, panel):
         panel._controller_loaded = True
@@ -251,10 +267,16 @@ class ControllerSettings(object):
         self.widgets = {}
         self.callbacks = {}
         self.rendered_settings = settings
+        self.rendered_style=self.current_style()
         self.Header(parent=panel, text='Input Device', padTop=0)
         row = self.row(panel)
         self.widgets['selector'] = self.Combo(parent=row, align=self.const.TOLEFT, width=230, options=self.controller_options(), select=settings['controllerIndex'], callback=self.choose_controller)
         self.button(row, 'Identify Controller', self.identify)
+        row=self.row(panel)
+        self.Label(parent=row,align=self.const.CENTERLEFT,text='Button Icons',state=self.const.UI_DISABLED)
+        self.Combo(parent=row,align=self.const.TORIGHT,width=230,options=[('Auto-Detect','auto'),('Xbox','xbox'),('PlayStation 4','ps4'),('PlayStation 5','ps5'),('Steam','steam')],select=settings.get('controllerIcons','auto'),callback=lambda combo,label,value:self.save({'controllerIcons':value},rebuild=True))
+        backend=getattr(self.controller.native,'device_info',lambda:{})().get('backend','XInput')
+        self.Label(parent=panel,align=self.const.TOTOP,text='Input Backend: '+backend,padBottom=8,state=self.const.UI_DISABLED)
         self.widgets['status'] = self.Label(parent=panel, align=self.const.TOTOP, text='Use A Controller Input To Identify Activity', padBottom=10)
         cancel_row = self.row(panel)
         self.widgets['cancel'] = cancel_row
@@ -280,7 +302,7 @@ class ControllerSettings(object):
         for action, title in self.api['ACTIONS']:
             self.binding_row(panel, title + (' (Tap)' if action == 'fly' else ' (Hold)' if action == 'stop' else ''),
                              settings['bindings'][action], self.capture_callback(action), self.clear_callback(action), 'binding:'+action)
-        self.Label(parent=panel, align=self.const.TOTOP, text='Rear Buttons Can Be Bound When Exposed As Independent Inputs. The Current Input Backend Exposes Standard Controller Buttons And Triggers.', padBottom=8)
+        self.Label(parent=panel, align=self.const.TOTOP, text='Rear Buttons And Touchpad Clicks Can Be Bound When Exposed As Independent Inputs.', padBottom=8)
         self.Header(parent=panel, text='Custom Bindings', padTop=12)
         for item in settings['customBindings']:
             try:command=self.resolve_custom(item)
@@ -323,7 +345,7 @@ class ControllerSettings(object):
         width = len(tokens) * icon_size + max(0,len(tokens)-1) * 16 + (58 if tokens and tokens[-1].endswith('_Y') else 0)
         control = self.Button(parent=parent, align=self.const.CENTERLEFT, width=BINDING_BUTTON_WIDTH, height=BINDING_BUTTON_HEIGHT,
                               label='' if value else empty,
-                              hint=display_binding(value) if value else empty, func=callback)
+                              hint=self.binding_title(value) if value else empty, func=callback)
         if not value:
             return control
         contents = self.Container(parent=control, align=self.const.CENTER, width=width, height=30,
@@ -335,7 +357,7 @@ class ControllerSettings(object):
                            text='+', state=self.const.UI_DISABLED, color=(1.,1.,1.,1.))
                 left += 16
             self.Sprite(parent=contents, align=self.const.CENTERLEFT, left=left, width=icon_size, height=icon_size,
-                        texturePath=self.button_icons[BUTTON_ICONS[token]], state=self.const.UI_DISABLED,
+                        texturePath=self.button_icons[self.icon_name(token)], state=self.const.UI_DISABLED,
                         color=(1.,1.,1.,1.))
             left += icon_size
             if token.endswith('_Y'):
@@ -492,11 +514,11 @@ class ControllerSettings(object):
     def confirm_override(self,conflicts,value,title):
         from eve.client.script.ui.shared.messagebox import MessageBox
         from player_messaging import PromptOptions, PromptIcon, PromptResult
-        lines=['<b>'+old_title+'</b> ('+display_binding(old)+')' for kind,identity,old_title,old in conflicts]
+        lines=['<b>'+old_title+'</b> ('+self.binding_title(old)+')' for kind,identity,old_title,old in conflicts]
         navigation_warning='<br><br>This also removes controller left-click and radial access. Use mouse/keyboard to assign a replacement.' if any(kind=='builtin' and identity=='leftClick' for kind,identity,old_title,old in conflicts) else ''
         self.confirming=True
         try:
-            response=MessageBox.prompt_player(text='This input is already assigned to:<br><br>'+'<br>'.join(lines)+'<br><br>Replace these bindings with <b>'+title+'</b> on <b>'+display_binding(value)+'</b>? The existing assignments will be removed.'+navigation_warning,
+            response=MessageBox.prompt_player(text='This input is already assigned to:<br><br>'+'<br>'.join(lines)+'<br><br>Replace these bindings with <b>'+title+'</b> on <b>'+self.binding_title(value)+'</b>? The existing assignments will be removed.'+navigation_warning,
                                               title='Replace Controller Binding?',buttons=PromptOptions.OKCANCEL,icon=PromptIcon.WARNING,
                                               default_response=PromptResult.CANCEL,modal=True,is_suppressable=False,
                                               ok_label='Replace Binding',cancel_label='Cancel')
@@ -592,7 +614,7 @@ class ControllerSettings(object):
         if set(pads) != set(self.connected):
             self.connected = pads
             self.widgets['selector'].LoadOptions(self.controller_options(), self.controller.settings['controllerIndex'])
-        if self.rendered_settings != self.controller.settings and not detecting:
+        if (self.rendered_settings != self.controller.settings or self.rendered_style!=self.current_style()) and not detecting:
             self.rebuild()
         keys = getattr(self.controller.native, 'keys', set())
         if detecting and (now >= self.deadline or 27 in keys):

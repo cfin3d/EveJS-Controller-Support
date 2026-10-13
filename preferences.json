@@ -1,6 +1,7 @@
 {
   "schemaVersion": 1,
   "controllerIndex": -1,
+  "controllerIcons": "auto",
   "deadzone": 0.2,
   "cursorSpeed": 1100,
   "cameraSpeed": 800,

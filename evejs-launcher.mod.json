@@ -78,8 +78,91 @@
           {
             "value": 3,
             "label": "Controller 4"
+          },
+          {
+            "value": 4,
+            "label": "Controller 5"
+          },
+          {
+            "value": 5,
+            "label": "Controller 6"
+          },
+          {
+            "value": 6,
+            "label": "Controller 7"
+          },
+          {
+            "value": 7,
+            "label": "Controller 8"
+          },
+          {
+            "value": 8,
+            "label": "Controller 9"
+          },
+          {
+            "value": 9,
+            "label": "Controller 10"
+          },
+          {
+            "value": 10,
+            "label": "Controller 11"
+          },
+          {
+            "value": 11,
+            "label": "Controller 12"
+          },
+          {
+            "value": 12,
+            "label": "Controller 13"
+          },
+          {
+            "value": 13,
+            "label": "Controller 14"
+          },
+          {
+            "value": 14,
+            "label": "Controller 15"
+          },
+          {
+            "value": 15,
+            "label": "Controller 16"
           }
         ]
+      },
+      {
+        "id": "controllerIcons",
+        "label": "Button Icons",
+        "type": "choice",
+        "default": "auto",
+        "file": "preferences",
+        "key": [
+          "controllerIcons"
+        ],
+        "restart": "none",
+        "group": "Controller Feel",
+        "choices": [
+          {
+            "value": "auto",
+            "label": "Auto-Detect"
+          },
+          {
+            "value": "xbox",
+            "label": "Xbox"
+          },
+          {
+            "value": "ps4",
+            "label": "PlayStation 4"
+          },
+          {
+            "value": "ps5",
+            "label": "PlayStation 5"
+          },
+          {
+            "value": "steam",
+            "label": "Steam"
+          }
+        ],
+        "description": "Auto follows the active detected controller. Override the icon style when Steam Input or another mapper exposes it as a virtual Xbox device."
       },
       {
         "id": "deadzone",

@@ -41,6 +41,7 @@
 - **Click Confirmation:** circular progress feedback with support for dragging.
 - **Camera and Ship Navigation:** pan, zoom, fly toward camera center, and stop.
 - **Controller Settings:** select a device, customize bindings, and save profiles in EVE's settings menu.
+- **Controller Families:** PlayStation and Steam input paths, with automatic white button icons and a manual style override.
 - **Automatic Input Switching:** move freely between controller and mouse/keyboard controls.
 - **In-Game Runtime:** starts at login; no separate application or tray icon.
 
@@ -51,10 +52,23 @@
 | EveJS | **0.12.9** |
 | EveJS Launcher | **1.0.53+** |
 | EVE Client | **Build 3396210**, Windows x64 |
-| Controller Input | XInput-compatible devices |
+| Controller Input | Xbox-compatible devices, DualShock/DualSense, and Steam controller input paths |
+| SteamOS / Proton | Experimental; requires running the Windows client and launcher through a compatible setup |
 | Server Backend | Native or Docker |
 
-Direct PlayStation support, including PS5 DualSense, is not available yet.
+PlayStation/Steam hardware and SteamOS/Proton compatibility need community testing. The bundled controller library has been checked with simulated devices; physical-device coverage is not yet verified.
+
+<details>
+<summary><strong>Controller Connections and Icons</strong></summary>
+
+- **PlayStation:** direct USB/Bluetooth input paths are included. Detected PlayStation devices use matching white symbols and L1/R1/L2/R2 labels in settings and radial prompts. Neocom confirmation/cancellation use Cross/Circle in the same button positions as A/B.
+- **Steam Deck / Steam Controller:** use gamepad output when launching through Steam Input. On controllers using a trackpad for right-stick functions, map that trackpad to the right joystick in the Steam controller layout.
+- **Button Icons:** **Auto-Detect** follows the active detected controller. Steam Input and other mappers may expose a virtual Xbox device; choose **PlayStation 4**, **PlayStation 5**, or **Steam** manually in **Settings → Controller** when needed.
+- **Multiple Controllers:** Auto-Detect follows controller activity. Use **Identify Controller** or choose a named slot to keep one device selected. Up to 16 connected slots are available; identify it again if connection order changes between sessions.
+- **Extra Inputs:** independently exposed rear buttons and touchpad clicks can be captured in custom bindings. Inputs mapped to ordinary buttons share those bindings. Motion controls, touch gestures, and adaptive-trigger/haptic effects are not implemented.
+- **Feedback:** report the controller model, USB/Bluetooth/Steam Input connection, operating system/Proton version, detected device name, and affected action in [Issues](https://github.com/cfin3d/EveJS-Controller-Support/issues).
+
+</details>
 
 ## Installation
 
@@ -182,6 +196,7 @@ In EVE, open **Settings → Controller**. Changes save and apply automatically.
 | Option | Use |
 | :--- | :--- |
 | **Controller** | Auto-detect or choose a connected device. **Identify Controller** selects the device you use next. |
+| **Button Icons** | Automatically match the active device, or choose Xbox, PlayStation 4/5, or Steam when a mapper hides its identity. |
 | **Camera** | Adjust pan/zoom speed and toggle **Invert Camera Pan** for vertical panning. |
 | **Cursor and Hold Timing** | Adjust precision, UI attraction, cursor appearance, and click/stop timing. |
 | **Bindings** | Compact white button icons show each input or combination. Rebind an action or clear its input; conflicts show a confirmation before replacing the previous assignment. |
@@ -207,7 +222,7 @@ In EVE, open **Settings → Controller**. Changes save and apply automatically.
 - **Capture:** select the binding, release controls, then press buttons or move a stick. Hold modifiers while moving the stick; release a button combination to finish recording it.
 - **Cancel:** select **Cancel Input Detection**, press Esc, or wait 15 seconds.
 - **Tap/Hold:** flight occurs on release; stop uses the configured hold time. They can share one binding.
-- **Rear Buttons:** separate bindings require independently exposed inputs. The current backend exposes standard XInput buttons, sticks, and triggers; rear buttons mapped to those inputs share their bindings.
+- **Rear Buttons and Touchpad Clicks:** capture independently exposed inputs as custom bindings. Buttons mapped to existing inputs share those bindings.
 - **Launcher:** basic feel settings remain available under **Mods → EveJS Controller → Configure** and use the same configuration file.
 
 </details>

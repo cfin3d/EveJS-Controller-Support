@@ -138,6 +138,7 @@ def _ec_radial_open(uicore, target, controller):
     from carbonui.primitives.container import Container
     from carbonui.primitives.vectorlinetrace import VectorLineTrace
     from carbonui.primitives.fill import Fill
+    from carbonui.primitives.sprite import Sprite
     from eve.client.script.ui.control.eveLabel import EveLabelSmall
     from carbon.common.script.util.format import FmtDist
     import carbonui.const as constants
@@ -206,6 +207,18 @@ def _ec_radial_open(uicore, target, controller):
                           width=320, height=108, state=constants.UI_DISABLED)
         for index, (glyph, label) in enumerate((('LS', 'Select'), ('RS' if range_axis else '', 'Range'), (cancel_glyph, 'Cancel'), (controller.settings['bindings']['leftClick'], 'Release'))):
             x = index * 80 + 40
+            icon_picker=controller.helpers.get('_ec_button_icon')
+            icons=getattr(getattr(controller,'menu',None),'button_icons',{})
+            tokens=glyph.split('+') if glyph else []
+            if tokens and icon_picker and all(icon_picker(controller,token) in icons for token in tokens):
+                size=min(30,int((70-4*(len(tokens)-1))/len(tokens)))
+                total=size*len(tokens)+4*(len(tokens)-1)
+                for offset,token in enumerate(tokens):
+                    Sprite(parent=hints,align=constants.TOPLEFT,left=x-total/2.+offset*(size+4),top=15-size/2.,width=size,height=size,
+                           texturePath=icons[icon_picker(controller,token)],state=constants.UI_DISABLED,color=(1.,1.,1.,1.))
+                EveLabelSmall(parent=hints,text='<center>'+label+'</center>',align=constants.TOPLEFT,left=index*80+5,top=32,width=70,
+                              state=constants.UI_DISABLED,color=(1.,1.,1.,.85))
+                continue
             line = VectorLineTrace(parent=hints, width=320, height=30, lineWidth=1.5, state=constants.UI_DISABLED)
             if index == 1 and not range_axis:
                 points = [(x-5,9),(x,4),(x+5,9),(x,4),(x,23),(x-5,18),(x,23),(x+5,18)]
@@ -216,6 +229,8 @@ def _ec_radial_open(uicore, target, controller):
             for point in points:
                 line.AddPoint(point, color=(1., 1., 1., .85))
             if glyph:
+                formatter=controller.helpers.get('_ec_button_name')
+                if formatter:glyph=formatter(controller,glyph)
                 EveLabelSmall(parent=hints, text='<center>' + glyph + '</center>', align=constants.TOPLEFT, left=x-19, top=7, width=38, maxLines=1,
                               state=constants.UI_DISABLED, color=(1.,1.,1.,1.))
             EveLabelSmall(parent=hints, text='<center>' + label + '</center>', align=constants.TOPLEFT, left=index*80+5, top=32, width=70,

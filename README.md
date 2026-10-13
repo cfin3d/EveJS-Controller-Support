@@ -16,7 +16,7 @@
 
 <p align="center">
   <a href="https://discord.gg/qxgMmtGmb7"><img alt="Join the EveJS Discord" src="https://img.shields.io/badge/EveJS_Discord-Join-5865f2?style=for-the-badge&amp;logo=discord&amp;logoColor=white"></a>
-  <a href="https://github.com/cfin3d/EveJS-Controller-Support/issues"><img alt="Report an Issue" src="https://img.shields.io/badge/Issues-Report-24292f?style=for-the-badge&amp;logo=github&amp;logoColor=white"></a>
+  <a href="https://github.com/cfin3d/EveJS-Controller-Support/issues/new/choose"><img alt="Report an Issue" src="https://img.shields.io/badge/Issues-Report-24292f?style=for-the-badge&amp;logo=github&amp;logoColor=white"></a>
   <a href="CHANGELOG.md"><img alt="Read the Changelog" src="https://img.shields.io/badge/Changelog-Read-24292f?style=for-the-badge"></a>
 </p>
 
@@ -241,7 +241,14 @@ In EVE, open **Settings → Controller**. Changes save and apply automatically.
 
 ## Support
 
-Join the [EveJS Discord](https://discord.gg/qxgMmtGmb7) or [report an issue](https://github.com/cfin3d/EveJS-Controller-Support/issues). Include your versions, controller model, and reproduction steps.
+Use the [Reporting Guidelines](https://github.com/cfin3d/EveJS-Controller-Support/blob/main/.github/REPORTING.md) for examples and help finding setup details. Unknown details are welcome; screenshots and logs are optional.
+
+| Feedback | Where to Go |
+| :--- | :--- |
+| **Bugs** | [Report a Problem](https://github.com/cfin3d/EveJS-Controller-Support/issues/new?template=01-bug-report.yml) |
+| **Suggestions** | [Request a Feature](https://github.com/cfin3d/EveJS-Controller-Support/issues/new?template=02-feature-request.yml) |
+| **Tested Hardware** | [Share Controller Compatibility](https://github.com/cfin3d/EveJS-Controller-Support/issues/new?template=03-controller-compatibility.yml) |
+| **General Help** | [EveJS Discord](https://discord.gg/qxgMmtGmb7) |
 
 <details>
 <summary><strong>Troubleshooting</strong></summary>

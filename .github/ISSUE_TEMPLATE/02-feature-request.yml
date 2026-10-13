@@ -1,0 +1,63 @@
+name: Feature Request
+description: Suggest a new function, usability improvement, binding, or accessibility option.
+title: "[Suggestion] "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Explain the situation you want to improve and how a player would use your suggestion.
+        See the [Reporting Guidelines](https://github.com/cfin3d/EveJS-Controller-Support/blob/main/.github/REPORTING.md). Use **Bug Report** when an existing function is broken.
+  - type: checkboxes
+    id: existing-requests
+    attributes:
+      label: Existing Suggestions
+      options:
+        - label: I searched open and closed issues for a similar suggestion.
+          required: true
+  - type: dropdown
+    id: category
+    attributes:
+      label: Suggestion Area
+      options:
+        - Controls or Bindings
+        - Cursor or Menu Navigation
+        - Camera or Ship Actions
+        - Radial Menu or Neocom
+        - HUD, Prompts, or Button Icons
+        - Settings or Profiles
+        - Controller or Platform Compatibility
+        - Accessibility
+        - Installation or Documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Player Need
+      description: What are you trying to do, and what makes it difficult with the current controls? Describe a concrete example.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Behavior
+      description: Describe the player-facing result. For a control or menu, include activation, navigation, confirmation/cancellation, and how normal controls resume where relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: setup
+    attributes:
+      label: Relevant Setup and Existing Bindings
+      description: Optional. Include your controller, platform, current binding/layout, and any input limitations. Explain how the suggestion would interact with existing controls or custom combinations.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives or Current Workaround
+      description: Optional. What do you do now? Would a smaller change solve the same problem?
+  - type: textarea
+    id: references
+    attributes:
+      label: Examples or References
+      description: Optional. Attach a sketch, screenshot, clip, or link. Explain the specific behavior worth adopting.

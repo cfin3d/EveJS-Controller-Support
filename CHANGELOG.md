@@ -6,6 +6,8 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 
 ### Added
 
+- Structured GitHub forms for bug reports, feature requests, and controller compatibility feedback, including successful hardware setups. Gather reproduction details, versions, device/input configuration, and optional evidence without requiring logs or unavailable information.
+- Reporting guidelines with focused issue examples, version/settings lookup help, a controller test checklist, public-attachment privacy guidance, and follow-up expectations. Link the forms from the README and provide a Discord option for general help in the issue chooser.
 - Bundled SDL 3.4.18 gamepad input inside the EVE process, with direct PlayStation USB/Bluetooth drivers, Steam controller/Steam Deck driver paths, and Steam Input gamepad output. Normalize all devices to the existing positional bindings and retain XInput fallback if the bundled backend cannot initialize.
 - Automatic controller-family icons and names in binding rows, conflict dialogs, and radial prompts. Add uniform white PlayStation SVG symbols and native transparent textures, with distinct Share/Create labels for detected DualShock 4/DualSense devices.
 - **Button Icons** selection with Auto-Detect, Xbox, PlayStation 4, PlayStation 5, and Steam overrides for virtual devices whose physical identity is hidden by an input mapper. Include the setting in saved profiles and launcher configuration.

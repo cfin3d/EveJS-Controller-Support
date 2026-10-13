@@ -1,0 +1,143 @@
+name: Bug Report
+description: Report broken controls, UI issues, crashes, or unexpected behavior.
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe one problem per report so it can be reproduced and tracked.
+        Read the [Reporting Guidelines](https://github.com/cfin3d/EveJS-Controller-Support/blob/main/.github/REPORTING.md) for examples and help finding details.
+        **Unknown is a valid answer.** Screenshots and logs are optional; remove private information before sharing them.
+  - type: checkboxes
+    id: existing-issues
+    attributes:
+      label: Existing Reports
+      options:
+        - label: I searched open and closed issues for the same problem.
+          required: true
+  - type: dropdown
+    id: affected-area
+    attributes:
+      label: Affected Area
+      options:
+        - Installation or Startup
+        - Controller Detection or Device Selection
+        - Cursor Movement, Attraction, or Dragging
+        - Clicks or Hold Timing
+        - Camera Pan or Zoom
+        - Ship Flight or Stop
+        - Target Radial Menu or Range Actions
+        - Neocom Navigation
+        - Controller Settings or Profiles
+        - Bindings or Custom Shortcuts
+        - Button Icons or Input Mode Switching
+        - Performance or Crash
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual Behavior
+      description: What happens? Include the exact message or visible result and how it affects play.
+      placeholder: The radial closes when I move the left stick diagonally toward Orbit.
+    validations:
+      required: true
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: What did you expect the same input to do?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps To Reproduce
+      description: Include the starting screen or game state, target or menu item, buttons, and tap/hold/release order. If intermittent, describe the last occurrence.
+      placeholder: |
+        1. Undock and highlight a station in the overview.
+        2. Hold RB until the target radial opens.
+        3. Move the left stick diagonally toward Orbit.
+        4. Observe the cursor position and whether the radial stays open.
+    validations:
+      required: true
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: Frequency
+      options:
+        - Every Attempt
+        - Often
+        - Occasionally
+        - Once So Far
+        - Unknown
+    validations:
+      required: true
+  - type: textarea
+    id: versions
+    attributes:
+      label: Versions and Platform
+      description: Include the mod release or testing-build date/commit, EveJS, launcher, client build, OS, and server backend. Write Unknown for unavailable details.
+      placeholder: |
+        Mod: Unreleased snapshot, downloaded YYYY-MM-DD / commit if known
+        EveJS:
+        EveJS Launcher:
+        EVE Client Build:
+        OS and Version:
+        Proton / Compatibility Layer (if used):
+        Server Backend: Native / Docker / Unknown
+    validations:
+      required: true
+  - type: input
+    id: controller
+    attributes:
+      label: Controller or Handheld Model
+      description: Include the exact model or generation, or say No Controller Connected if this is a settings/startup problem.
+      placeholder: Sony DualSense / DualShock 4 / Steam Deck OLED / Xbox Wireless Controller
+    validations:
+      required: true
+  - type: dropdown
+    id: connection
+    attributes:
+      label: Connection Method
+      options:
+        - USB
+        - Bluetooth
+        - Wireless Adapter or Dongle
+        - Built-In Handheld Controls
+        - No Controller Connected
+        - Other or Unknown
+    validations:
+      required: true
+  - type: textarea
+    id: input-setup
+    attributes:
+      label: Input Setup and Controller Settings
+      description: Name Steam Input or other input software (or say Not Used), the detected controller and Input Backend in Settings → Controller, selected device/icon style, relevant bindings and hold timings, and other connected controllers.
+      placeholder: |
+        Input Software and Layout:
+        Detected Device / Input Backend:
+        Controller Selection / Button Icons:
+        Default or Custom Bindings:
+        Relevant Timing / Cursor / Camera Settings:
+        Other Connected Controllers:
+    validations:
+      required: true
+  - type: textarea
+    id: comparisons
+    attributes:
+      label: Comparisons and Workarounds
+      description: If already checked, does the same native action work with mouse/keyboard? Does another connection or input setup help? Did an earlier build work? Report what you tried; testing alternatives is optional.
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Screenshots or Video
+      description: Attach optional images or a short clip here. Explain which controller input was held or released; recording can temporarily switch input modes.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Log Excerpts
+      description: Optional. Paste only relevant entries around the failure, including EVEJS_CONTROLLER or [EveJS Controller] messages if available. Remove credentials, tokens, personal paths, and unrelated chat.
+      render: text

@@ -1,0 +1,96 @@
+name: Controller Compatibility Report
+description: Share a tested controller setup, including successful configurations and remaining limitations.
+title: "[Compatibility] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Hardware feedback helps verify PlayStation, Steam, and other controller setups.
+        Report only what you tested; **Not Tested** and **Unknown** are valid answers.
+        Use **Bug Report** for a reproducible failure and link it below. Read the [Reporting Guidelines](https://github.com/cfin3d/EveJS-Controller-Support/blob/main/.github/REPORTING.md) for a suggested test checklist.
+  - type: input
+    id: controller
+    attributes:
+      label: Controller or Handheld Model
+      description: Include generation, variant, and firmware version if known.
+      placeholder: DualSense / DualShock 4 / Steam Controller / Steam Deck OLED
+    validations:
+      required: true
+  - type: dropdown
+    id: outcome
+    attributes:
+      label: Overall Result
+      description: This describes the functions you tested, not untested features.
+      options:
+        - All Tested Functions Worked
+        - Partially Working
+        - Detected but Controls Did Not Work
+        - Not Detected
+        - Unable To Complete Testing
+    validations:
+      required: true
+  - type: dropdown
+    id: connection
+    attributes:
+      label: Connection Method
+      options:
+        - USB
+        - Bluetooth
+        - Wireless Adapter or Dongle
+        - Built-In Handheld Controls
+        - Other or Unknown
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Versions and Platform
+      description: Include the mod release or snapshot date/commit, EveJS, launcher, client build, OS/version, Proton if used, and Native/Docker backend. Unknown is fine.
+      placeholder: |
+        Mod:
+        EveJS / Launcher / Client Build:
+        OS and Version:
+        Proton / Compatibility Layer (if used):
+        Server Backend:
+    validations:
+      required: true
+  - type: textarea
+    id: input-setup
+    attributes:
+      label: Input Configuration
+      description: Include Steam Input or other software/version (or Not Used), layout/mapping, detected name and Input Backend in Settings → Controller, device selection, and icon style. Note whether icons were automatic or manually selected.
+      placeholder: |
+        Input Software / Layout:
+        Detected Device / Input Backend:
+        Controller Selection:
+        Button Icons: Auto-Detect or Manual Style
+        Custom Bindings / Other Connected Controllers:
+    validations:
+      required: true
+  - type: textarea
+    id: tested-functions
+    attributes:
+      label: Tested Functions and Results
+      description: List each function as Worked, Failed, or Not Tested. Optional checklist below; replace it with the tests you actually performed. Basic support does not imply gyro, touch gestures, or advanced haptics.
+      placeholder: |
+        Detection and Device Selection:
+        Cursor / Click Holds / Dragging / Attraction:
+        Camera Pan / LT + Right Stick Zoom:
+        Right Stick Tap Flight / Hold Stop:
+        Radial Selection / Range / Confirmation / Cancellation:
+        Neocom D-Pad / A-B Holds / Submenus:
+        Button Icons / Custom Binding Capture:
+        Exposed Rear Buttons or Touchpad Click:
+        Mouse-Keyboard Switching / Reconnection:
+    validations:
+      required: true
+  - type: textarea
+    id: limitations
+    attributes:
+      label: Limitations and Setup Tips
+      description: Optional. List required mappings, unavailable inputs, duplicate devices, connection differences, or workarounds. Link bug reports for failures that need investigation.
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Screenshots, Logs, or Layout References
+      description: Optional. Attach settings screenshots, sanitized relevant log excerpts, or a link to the controller layout. Remove private information before posting.

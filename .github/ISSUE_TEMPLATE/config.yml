@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Reporting Guidelines
+    url: https://github.com/cfin3d/EveJS-Controller-Support/blob/main/.github/REPORTING.md
+    about: Read examples, find version details, and learn what to include in a report.
+  - name: EveJS Discord
+    url: https://discord.gg/qxgMmtGmb7
+    about: Ask general setup and gameplay questions in the EveJS community.

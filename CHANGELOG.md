@@ -6,51 +6,54 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 
 ### Added
 
-- Windows x64 controller companion with Xbox/XInput support and automatic selection across slots 0–3.
-- Legion Go Gamepad/XInput configuration support.
-- Analog left-stick cursor movement with a radial deadzone, a squared precision curve, and configurable maximum speed.
-- Left-bumper right-click and right-bumper left-click, each confirmed by a configurable 500 ms hold.
-- Early-release cancellation and hold reset when the cursor changes targets or moves away before confirmation.
-- Continued mouse-button holds for dragging, plus optional confirmed double-click bindings.
-- Minimal white/cyan circular cursor with animated UI attraction and separate confirmation arcs for left-click, right-click and stopping.
-- Gentle attraction to the center of real hovered UI controls, with escape through strong or sustained stick movement.
-- Right-stick camera panning with configurable drag button, speed and clear-space anchor.
-- Camera-center flight on a short right-stick press/release, independent of cursor position.
-- Native stop-ship command after a separate one-second right-stick hold, without issuing flight before stopping or on release.
-- Static camera-center dot in the native space UI, below windows and menus, with center-occlusion and menu/modal hiding.
-- D-pad scrolling, face-button shortcuts, View/Menu shortcuts, and a View + Menu pause chord.
-- Automatic startup at EveJS login, a notification-area status window, and live configuration reloads.
-- EveJS Launcher discovery, configuration, activation and disable/remove integration.
+- Controller input running inside the EVE client, with automatic selection of XInput-compatible devices across slots 0–3.
+- Automatic switching between controller mode and mouse/keyboard mode based on physical input.
+- Tagged controller-generated mouse events so they do not trigger mouse/keyboard mode.
+- Analog left-stick cursor navigation with a radial deadzone, squared precision curve and retained fractional movement for slow control.
+- Left-bumper right-click and right-bumper left-click with a configurable 500 ms confirmation hold.
+- Early-release cancellation, confirmation reset after changing targets/moving away, and continued confirmed holds for dragging.
+- Native white/cyan circular cursor with fluid attraction feedback and separate left-click, right-click and stop progress arcs.
+- Gentle attraction to the centers of real hovered UI controls, with escape through strong or sustained stick movement.
+- Right-stick camera movement through the client's camera API.
+- Camera-center flight on short right-stick release, independent of cursor position.
+- A native stop-ship request after a separate one-second right-stick hold, with no preceding flight or flight on release.
+- A static camera-center dot beneath native menus/windows, hidden for center UI occlusion or open menus/modal dialogs.
+- Automatic startup at EveJS login and live launcher configuration reloads.
+- Launcher installation, configuration, activation and disable/remove integration.
+- A centered white EVE Online logo with transparency, consistent SVG control icons and an EveJS Discord button.
+
+### Changed
+
+- Move controller polling, cursor rendering and navigation into the EVE process.
+- Replace the continuously running companion with a short-lived launcher setup helper.
+- Use general controller-support branding and clearly identify current XInput coverage.
+- Simplify configuration to the ten settings used by the agreed controls.
+- Preserve existing right-stick stop holds while camera movement returns to center.
+
+### Removed
+
+- The companion executable, manual-start command and notification-area interface.
+- Unrequested face-button, D-pad, View/Menu and pause-chord assignments.
+- Optional custom key/mouse binding actions; existing extra bindings are ignored.
+- The mouse-drag camera anchor and its configuration fields.
+- Device-specific branding and the additional compatibility/testing paragraph from the README.
 
 ### Input and lifecycle
 
-- Restrict controller input to the selected foreground EVE client.
-- Release owned inputs on focus loss, disconnect, pause, invalid settings and shutdown.
-- Require neutral controls after focus/device changes and camera drag completion.
-- Restore the UI cursor after camera dragging; preserve an existing right-stick stop timer when the stick returns to center.
-- Cancel pending flight/stop gestures on focus loss, disconnect or pause.
-- Expire navigation requests quickly and suppress duplicates across client-observer reconnects.
-- Restore the native cursor when the controller overlay is inactive or its heartbeat expires.
-- Hide/remove the center dot when inactive, docked, during session transitions or when the client observer stops.
-- Leave left-stick press inactive and LT/RT unassigned by default.
+- Physical mouse/keyboard input cancels pending controller actions, releases owned clicks and restores the native pointer.
+- A stationary held stick/button cannot immediately reclaim input after mouse/keyboard takeover; fresh controller activity is required.
+- Restrict input to the foreground client, and require neutral controls after focus changes or controller reconnection.
+- Cancel pending flight/stop gestures on input takeover, focus loss, disconnect, invalid settings or disable.
+- Remove native cursor/dot UI and unregister event listeners when the mod stops or is replaced.
+- Preserve physically held mouse buttons while releasing controller ownership.
+- Leave left-stick press, triggers, face buttons, D-pad and View/Menu without gameplay actions.
 
-### Compatibility
+### Compatibility and validation
 
 - Target EveJS **0.12.9**, launcher **1.0.53+**, and Windows x64 EVE client **build 3396210**.
-- Declare native and Docker server backends, with controller input handled by the Windows client companion.
-- Reject unsupported login-handshake revisions before activation.
-
-### Documentation and packaging
-
-- Add installation, compatibility, usage, configuration and troubleshooting guidance.
-- Add uniform white SVG Xbox-style control icons and an EveJS Discord button.
-- Add a centered white EVE Online logo with a transparent background.
-- Keep the repository root installable as a single mod folder.
-- Prepare release packaging around a top-level `evejs-controller` folder, beginning with version **0.1.0**.
-
-### Validation status
-
-- Controller logic, login startup, client UI, native navigation delegation, center-dot behavior and launcher integration pass automated checks.
-- Live EVE gameplay, Xbox controller use, Docker runtime behavior and Legion Go hardware validation remain pending.
+- Keep native and Docker server backends, with controller input inside the Windows client.
+- Keep the supported login-source verification before activation.
+- Verify startup, agreed controls, hold timing, input switching, native UI helpers and actual launcher integration with automated checks. Live gameplay validation remains pending.
+- Direct PlayStation controller support, including PS5 DualSense, is not yet implemented.
 
 [Unreleased]: https://github.com/cfin3d/EveJS-Controller-Support/commits/main/

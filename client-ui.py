@@ -1,6 +1,6 @@
-# Cursor target observer and reversible cursor mask for EVE client build 3396210.
-# Python 2.7 compatible. Publishes only a transient ID and rectangle; no text,
-# inventory data, input-handler replacements, or client archive modifications.
+# Native UI helpers for EVE client build 3396210.
+# Python 2.7 compatible. Uses native hit-testing and reversible cursor masking.
+# Does not modify client archives or replace input handlers.
 # Explicit stick gestures call the existing client flight/stop functions.
 import json as _ec_json
 import os as _ec_os
@@ -113,18 +113,6 @@ def _ec_navigation(action, uicore):
     return 'Camera-center flight requested'
 
 
-def _ec_navigation_request(lease, pid, now):
-    try:
-        command_id, action = lease.get('commandID'), lease.get('command')
-        lease_age = now - float(lease.get('updated', 0))
-        command_age = now - float(lease.get('commandCreated', 0))
-        if lease.get('schema') == 1 and lease.get('pid') == pid and lease.get('active') is True and 0 <= lease_age <= .35 and 0 <= command_age <= .5 and action in ('fly', 'stop') and isinstance(command_id, (str, type(u''))) and 1 <= len(command_id) <= 64:
-            return command_id, action
-    except Exception:
-        pass
-    return None
-
-
 def _ec_crosshair_clear(uicore, layer):
     # Native hit-testing is read-only and does not move or capture the pointer.
     # Also hide for open menus/modal dialogs, including translucent backgrounds.
@@ -179,14 +167,6 @@ class _CameraCenterDot(object):
         self.dot = self.parent = None
 
 
-def _ec_lease_active(lease, pid, now, field='active'):
-    try:
-        age = now - float(lease.get('updated', 0))
-        return lease.get('schema') == 1 and lease.get('pid') == pid and lease.get(field) is True and 0 <= age <= .35
-    except Exception:
-        return False
-
-
 class _CursorMask(object):
     def __init__(self, uilib, constants):
         self.uilib = uilib
@@ -229,130 +209,3 @@ class _CursorMask(object):
         except Exception:
             pass
         self.wrapper = None
-
-
-class _EveControllerUiObserver(object):
-    def __init__(self, directory):
-        self.active = True
-        self.directory = directory
-        self.path = _ec_os.path.join(directory, str(_ec_os.getpid()) + '.json')
-        self.temporary = self.path + '.new'
-        self.mask = None
-        self.crosshair = _CameraCenterDot()
-        self.navigation_status = 'Ready for stick navigation'
-        self.command_id = None
-        seen = getattr(_ec_builtins, '_evejs_controller_navigation_seen_v1', None)
-        if seen is None:
-            seen = []
-            setattr(_ec_builtins, '_evejs_controller_navigation_seen_v1', seen)
-        self.seen_commands = seen
-
-    def current(self):
-        return self.active and getattr(_ec_builtins, '_evejs_controller_ui_v1', None) is self
-
-    def consume_navigation(self, lease, uicore, now):
-        request = _ec_navigation_request(lease, _ec_os.getpid(), now)
-        if request is None or request[0] in self.seen_commands:
-            return
-        command_id, action = request
-        self.seen_commands.append(command_id)
-        del self.seen_commands[:-64]
-        self.command_id = command_id
-        try:
-            self.navigation_status = _ec_navigation(action, uicore)
-        except Exception as error:
-            self.navigation_status = 'Navigation unavailable: ' + type(error).__name__
-
-    def dispose(self):
-        self.active = False
-        if self.mask is not None:
-            self.mask.dispose()
-        self.crosshair.dispose()
-        # Cleanup belongs only to this live observer. A replacement uses the same PID.
-        for path in (self.path, self.temporary):
-            try:
-                if _ec_os.path.isfile(path):
-                    _ec_os.remove(path)
-            except Exception:
-                pass
-
-    def run(self):
-        import blue
-        while self.current():
-            blue.pyos.synchro.SleepWallclock(100)
-            if not self.current():
-                return
-            try:
-                activation = _ec_os.path.join(_ec_os.path.dirname(self.directory), 'activation.json')
-                if not _ec_os.path.isfile(activation):
-                    self.dispose()
-                    return
-                with open(activation, 'rb') as stream:
-                    enabled = _ec_json.load(stream).get('enabled') is True
-                if not enabled:
-                    self.dispose()
-                    return
-                uicore = getattr(_ec_builtins, 'uicore', None)
-                if uicore is None:
-                    continue
-                if self.mask is None:
-                    import carbonui.const as constants
-                    self.mask = _CursorMask(uicore.uilib, constants)
-                ring_active = False
-                lease = {}
-                try:
-                    with open(_ec_os.path.join(self.directory, 'bridge.json'), 'rb') as stream:
-                        lease = _ec_json.load(stream)
-                    ring_active = _ec_lease_active(lease, _ec_os.getpid(), _ec_time.time(), 'visible')
-                except Exception:
-                    pass
-                self.consume_navigation(lease, uicore, _ec_time.time())
-                crosshair_active = _ec_lease_active(lease, _ec_os.getpid(), _ec_time.time())
-                self.crosshair.update(uicore, crosshair_active)
-                native_hidden = self.mask.show_ring(ring_active)
-                document = {'schema': 1, 'pid': _ec_os.getpid(), 'hover': _ec_hover_target(uicore), 'nativeCursorHidden': native_hidden,
-                            'navigationStatus': self.navigation_status, 'commandID': self.command_id}
-                with open(self.temporary, 'wb') as stream:
-                    stream.write(_ec_json.dumps(document, separators=(',', ':')).encode('ascii'))
-                if not self.current():
-                    return
-                # Python 2 on Windows cannot rename over an existing file. Readers
-                # treat the short replacement gap as unavailable, never stale input.
-                if _ec_os.path.isfile(self.path):
-                    _ec_os.remove(self.path)
-                _ec_os.rename(self.temporary, self.path)
-            except Exception:
-                # UI transitions and transient file sharing errors are expected;
-                # missing snapshots automatically disable attraction in the bridge.
-                if self.mask is not None:
-                    self.mask.show_ring(False)
-                self.crosshair.dispose()
-                continue
-
-
-def _ec_start_ui_observer():
-    import eveprefs
-    import uthread
-    if int(eveprefs.boot.build) != 3396210:
-        return False
-    directory = _ec_os.environ.get('CONTROLLER_UI_DIRECTORY', '')
-    executable = _ec_os.environ.get('CONTROLLER_COMPANION_EXE', '')
-    expected = _ec_os.path.join(_ec_os.path.dirname(executable), 'ui')
-    if not directory or _ec_os.path.normcase(_ec_os.path.abspath(directory)) != _ec_os.path.normcase(_ec_os.path.abspath(expected)):
-        return False
-    if not _ec_os.path.isdir(directory):
-        return False
-    previous = getattr(_ec_builtins, '_evejs_controller_ui_v1', None)
-    if previous is not None:
-        previous.dispose()
-    observer = _EveControllerUiObserver(directory)
-    setattr(_ec_builtins, '_evejs_controller_ui_v1', observer)
-    uthread.new(observer.run)
-    return True
-
-
-if not globals().get('_ec_test_mode', False):
-    try:
-        _ec_start_ui_observer()
-    except Exception:
-        print('EVEJS_CONTROLLER_UI:UNAVAILABLE')

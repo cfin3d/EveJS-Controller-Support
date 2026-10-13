@@ -3,7 +3,7 @@
   "id": "evejs-controller",
   "displayName": "EveJS Controller",
   "version": "0.1.0",
-  "description": "Legion Go and Xbox controller support with analog cursor precision, gentle UI attraction, circular hold feedback, LB right-click, RB left-click, right-stick camera panning, camera-center flight on short press, and stop on a one-second hold. Starts automatically at EveJS login.",
+  "description": "Controller support inside the EVE client with automatic controller and mouse/keyboard switching, analog cursor precision, hold-to-click, camera panning and camera-center ship navigation.",
   "kind": "loader",
   "supportedBackends": [
     "native",
@@ -25,8 +25,8 @@
     "version": 1,
     "minLauncherVersion": "1.0.53",
     "helper": {
-      "runtime": "executable",
-      "path": "EveJSController.exe"
+      "runtime": "powershell",
+      "path": "launcher-helper.ps1"
     },
     "capabilities": [
       "install",
@@ -114,7 +114,7 @@
       },
       {
         "id": "cameraSpeed",
-        "label": "Maximum camera drag speed (pixels/second)",
+        "label": "Camera movement speed",
         "type": "integer",
         "default": 800,
         "file": "preferences",
@@ -126,97 +126,6 @@
         "minimum": 100,
         "maximum": 4000,
         "step": 50
-      },
-      {
-        "id": "cameraButton",
-        "label": "Camera drag mouse button",
-        "type": "choice",
-        "default": "MOUSE_LEFT",
-        "file": "preferences",
-        "key": [
-          "cameraButton"
-        ],
-        "restart": "none",
-        "group": "Controller feel",
-        "choices": [
-          {
-            "value": "MOUSE_LEFT",
-            "label": "Left button (rotate)"
-          },
-          {
-            "value": "MOUSE_RIGHT",
-            "label": "Right button"
-          },
-          {
-            "value": "MOUSE_MIDDLE",
-            "label": "Middle button"
-          }
-        ],
-        "description": "Uses the client's normal camera drag behavior. Place the anchor in clear space."
-      },
-      {
-        "id": "cameraAnchorX",
-        "label": "Camera anchor across window (fraction)",
-        "type": "number",
-        "default": 0.5,
-        "file": "preferences",
-        "key": [
-          "cameraAnchorX"
-        ],
-        "restart": "none",
-        "group": "Controller feel",
-        "minimum": 0.05,
-        "maximum": 0.95,
-        "step": 0.01,
-        "advanced": true
-      },
-      {
-        "id": "cameraAnchorY",
-        "label": "Camera anchor down window (fraction)",
-        "type": "number",
-        "default": 0.4,
-        "file": "preferences",
-        "key": [
-          "cameraAnchorY"
-        ],
-        "restart": "none",
-        "group": "Controller feel",
-        "minimum": 0.05,
-        "maximum": 0.95,
-        "step": 0.01,
-        "advanced": true
-      },
-      {
-        "id": "scrollSpeed",
-        "label": "D-pad scroll speed (notches/second)",
-        "type": "number",
-        "default": 6,
-        "file": "preferences",
-        "key": [
-          "scrollSpeed"
-        ],
-        "restart": "none",
-        "group": "Controller feel",
-        "minimum": 0.5,
-        "maximum": 30,
-        "step": 0.5
-      },
-      {
-        "id": "triggerThreshold",
-        "label": "Trigger threshold for optional bindings",
-        "type": "integer",
-        "default": 40,
-        "file": "preferences",
-        "key": [
-          "triggerThreshold"
-        ],
-        "restart": "none",
-        "group": "Controller feel",
-        "minimum": 10,
-        "maximum": 250,
-        "step": 1,
-        "advanced": true,
-        "description": "LT and RT are unassigned by default. This applies only if you bind them yourself."
       },
       {
         "id": "cursorRing",
@@ -307,216 +216,6 @@
         "maximum": 3000,
         "step": 100,
         "description": "Default 1000 ms. Release a shorter right-stick press to fly toward camera center. Hold this long to stop without issuing forward flight."
-      },
-      {
-        "id": "binding-lb",
-        "label": "LB binding",
-        "type": "string",
-        "default": "MOUSE_RIGHT",
-        "maxLength": 128,
-        "file": "preferences",
-        "key": [
-          "bindings",
-          "LB"
-        ],
-        "group": "Button bindings",
-        "restart": "none",
-        "description": "Use a key, mouse button, chord such as CTRL+SPACE, or tap:F1. Empty means unassigned. See README for supported names."
-      },
-      {
-        "id": "binding-rb",
-        "label": "RB binding",
-        "type": "string",
-        "default": "MOUSE_LEFT",
-        "maxLength": 128,
-        "file": "preferences",
-        "key": [
-          "bindings",
-          "RB"
-        ],
-        "group": "Button bindings",
-        "restart": "none",
-        "description": "Use a key, mouse button, chord such as CTRL+SPACE, or tap:F1. Empty means unassigned. See README for supported names."
-      },
-      {
-        "id": "binding-lt",
-        "label": "LT binding",
-        "type": "string",
-        "default": "",
-        "maxLength": 128,
-        "file": "preferences",
-        "key": [
-          "bindings",
-          "LT"
-        ],
-        "group": "Button bindings",
-        "restart": "none",
-        "description": "Use a key, mouse button, chord such as CTRL+SPACE, or tap:F1. Empty means unassigned. See README for supported names."
-      },
-      {
-        "id": "binding-rt",
-        "label": "RT binding",
-        "type": "string",
-        "default": "",
-        "maxLength": 128,
-        "file": "preferences",
-        "key": [
-          "bindings",
-          "RT"
-        ],
-        "group": "Button bindings",
-        "restart": "none",
-        "description": "Use a key, mouse button, chord such as CTRL+SPACE, or tap:F1. Empty means unassigned. See README for supported names."
-      },
-      {
-        "id": "binding-a",
-        "label": "A binding",
-        "type": "string",
-        "default": "MOUSE_LEFT",
-        "maxLength": 128,
-        "file": "preferences",
-        "key": [
-          "bindings",
-          "A"
-        ],
-        "group": "Button bindings",
-        "restart": "none",
-        "description": "Use a key, mouse button, chord such as CTRL+SPACE, or tap:F1. Empty means unassigned. See README for supported names."
-      },
-      {
-        "id": "binding-b",
-        "label": "B binding",
-        "type": "string",
-        "default": "tap:ESC",
-        "maxLength": 128,
-        "file": "preferences",
-        "key": [
-          "bindings",
-          "B"
-        ],
-        "group": "Button bindings",
-        "restart": "none",
-        "description": "Use a key, mouse button, chord such as CTRL+SPACE, or tap:F1. Empty means unassigned. See README for supported names."
-      },
-      {
-        "id": "binding-x",
-        "label": "X binding",
-        "type": "string",
-        "default": "CTRL",
-        "maxLength": 128,
-        "file": "preferences",
-        "key": [
-          "bindings",
-          "X"
-        ],
-        "group": "Button bindings",
-        "restart": "none",
-        "description": "Use a key, mouse button, chord such as CTRL+SPACE, or tap:F1. Empty means unassigned. See README for supported names."
-      },
-      {
-        "id": "binding-y",
-        "label": "Y binding",
-        "type": "string",
-        "default": "tap:TAB",
-        "maxLength": 128,
-        "file": "preferences",
-        "key": [
-          "bindings",
-          "Y"
-        ],
-        "group": "Button bindings",
-        "restart": "none",
-        "description": "Use a key, mouse button, chord such as CTRL+SPACE, or tap:F1. Empty means unassigned. See README for supported names."
-      },
-      {
-        "id": "binding-dpad_up",
-        "label": "DPAD_UP binding",
-        "type": "string",
-        "default": "SCROLL_UP",
-        "maxLength": 128,
-        "file": "preferences",
-        "key": [
-          "bindings",
-          "DPAD_UP"
-        ],
-        "group": "Button bindings",
-        "restart": "none",
-        "description": "Use a key, mouse button, chord such as CTRL+SPACE, or tap:F1. Empty means unassigned. See README for supported names."
-      },
-      {
-        "id": "binding-dpad_down",
-        "label": "DPAD_DOWN binding",
-        "type": "string",
-        "default": "SCROLL_DOWN",
-        "maxLength": 128,
-        "file": "preferences",
-        "key": [
-          "bindings",
-          "DPAD_DOWN"
-        ],
-        "group": "Button bindings",
-        "restart": "none",
-        "description": "Use a key, mouse button, chord such as CTRL+SPACE, or tap:F1. Empty means unassigned. See README for supported names."
-      },
-      {
-        "id": "binding-dpad_left",
-        "label": "DPAD_LEFT binding",
-        "type": "string",
-        "default": "tap:LEFT",
-        "maxLength": 128,
-        "file": "preferences",
-        "key": [
-          "bindings",
-          "DPAD_LEFT"
-        ],
-        "group": "Button bindings",
-        "restart": "none",
-        "description": "Use a key, mouse button, chord such as CTRL+SPACE, or tap:F1. Empty means unassigned. See README for supported names."
-      },
-      {
-        "id": "binding-dpad_right",
-        "label": "DPAD_RIGHT binding",
-        "type": "string",
-        "default": "tap:RIGHT",
-        "maxLength": 128,
-        "file": "preferences",
-        "key": [
-          "bindings",
-          "DPAD_RIGHT"
-        ],
-        "group": "Button bindings",
-        "restart": "none",
-        "description": "Use a key, mouse button, chord such as CTRL+SPACE, or tap:F1. Empty means unassigned. See README for supported names."
-      },
-      {
-        "id": "binding-view",
-        "label": "VIEW binding",
-        "type": "string",
-        "default": "tap:CTRL+SPACE",
-        "maxLength": 128,
-        "file": "preferences",
-        "key": [
-          "bindings",
-          "VIEW"
-        ],
-        "group": "Button bindings",
-        "restart": "none",
-        "description": "Use a key, mouse button, chord such as CTRL+SPACE, or tap:F1. Empty means unassigned. See README for supported names."
-      },
-      {
-        "id": "binding-menu",
-        "label": "MENU binding",
-        "type": "string",
-        "default": "tap:ESC",
-        "maxLength": 128,
-        "file": "preferences",
-        "key": [
-          "bindings",
-          "MENU"
-        ],
-        "group": "Button bindings",
-        "restart": "none",
-        "description": "Use a key, mouse button, chord such as CTRL+SPACE, or tap:F1. Empty means unassigned. See README for supported names."
       }
     ]
   }

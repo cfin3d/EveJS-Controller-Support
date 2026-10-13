@@ -60,6 +60,9 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 
 ### Fixed
 
+- Match the radial cursor to the normal cursor's 26 px white ring, white strokes, and 3 px white dot; remove its older dark outer circle while retaining circular bounds.
+- Keep D-pad range selection stable across native control refreshes, show the range circle, and retain range focus after adjustment so centering the stick does not discard the chosen action. D-pad input can restore the most recent range wedge on the current menu level.
+- Pin the validated native range callback, target argument, distance, and range fraction before queuing confirmation. Native option refreshes or closing-control changes cannot reset the distance or replace Orbit with another callback before it executes.
 - Preserve button frame dimensions through the current client's intrinsic sizing API, which ignores legacy fixed-width/fixed-height attributes. Use uniform 274 × 40 binding buttons with centered icon groups, consistent icon spacing, and at least 24 px padding on each side of the longest supported combination; apply the same sizing to custom and empty binding inputs.
 - Use the client's registered `radialmenu` service when installing controller radial handling. The incorrect service lookup disabled controller radial activation and allowed the ordinary mouse radial to open, bypassing the bounded left-stick cursor and exclusive menu controls.
 - Fix native binding buttons rendering as thin strips by replacing fill alignment with explicit centered dimensions. Keep input, Clear/Remove, and editor buttons compact with consistent height.

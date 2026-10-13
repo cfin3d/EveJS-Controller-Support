@@ -192,16 +192,16 @@ def _ec_radial_open(uicore, target, controller):
     cancel_glyph, cancel_mask = next((name, bit) for name, bit in (('B',0x2000),('A',0x1000),('X',0x4000),('Y',0x8000),('LS',0x40)) if name not in activation)
     try:
         wheel_cursor = Container(parent=view, name='evejsControllerRadialCursor', align=constants.TOPLEFT,
-                                 width=28, height=28, state=constants.UI_DISABLED, idx=0)
-        for line_width, color in ((4.5,(0.,0.,0.,.85)),(2.,(1.,1.,1.,1.))):
-            ring = VectorLineTrace(parent=wheel_cursor, width=28, height=28, lineWidth=line_width,
+                                 width=32, height=32, state=constants.UI_DISABLED, idx=0)
+        for line_width, color in ((4.5,(1.,1.,1.,1.)),(2.,(1.,1.,1.,1.))):
+            ring = VectorLineTrace(parent=wheel_cursor, width=32, height=32, lineWidth=line_width,
                                   state=constants.UI_DISABLED)
             for index in range(49):
                 angle = index * _ec_math.pi / 24.
-                ring.AddPoint((14 + 11 * _ec_math.cos(angle),14 + 11 * _ec_math.sin(angle)),color=color)
-        Fill(parent=wheel_cursor, align=constants.TOPLEFT, left=12.5, top=12.5, width=3, height=3,
+                ring.AddPoint((16 + 13 * _ec_math.cos(angle),16 + 13 * _ec_math.sin(angle)),color=color)
+        Fill(parent=wheel_cursor, align=constants.TOPLEFT, left=14.5, top=14.5, width=3, height=3,
              state=constants.UI_DISABLED, color=(1.,1.,1.,1.))
-        wheel_cursor.left, wheel_cursor.top = view.width / 2. - 14, view.height / 2. - 14
+        wheel_cursor.left, wheel_cursor.top = view.width / 2. - 16, view.height / 2. - 16
         hints = Container(parent=view, align=constants.TOPLEFT, left=(view.width - 320) / 2., top=view.height + 12,
                           width=320, height=54, state=constants.UI_DISABLED)
         for index, (glyph, label) in enumerate((('LS', 'Select'), ('RS' if range_axis else '', 'Range'), (cancel_glyph, 'Cancel'), (controller.settings['bindings']['leftClick'], 'Release'))):
@@ -231,8 +231,10 @@ def _ec_radial_open(uicore, target, controller):
             self.range_axis = range_axis
             self.finished, self.confirmed = False, False
             self.button, self.degree, self.more_started, self.expansion_degree = None, None, None, None
+            self.button_key = None
             self.range_direction, self.next_range = 0, 0.
             self.range_values = {}
+            self.last_range_vector, self.range_focus = None, False
             self.cursor = wheel_cursor
 
         def valid(self):
@@ -246,20 +248,25 @@ def _ec_radial_open(uicore, target, controller):
         def update(self, x, y, range_direction, now):
             if self.finished or not self.valid():
                 return
+            centered = _ec_math.hypot(x,y) < .04
+            expanded = view.secondLayerCont.isExpanded
+            if centered and self.last_range_vector and self.last_range_vector[2] == expanded and (range_direction or self.range_focus):
+                x,y,unused = self.last_range_vector
+                self.range_focus = True
             # The wheel owns a local cursor: absolute stick position inside a
             # circle, rather than accumulated desktop cursor movement. No OS
             # clipping or capture is installed, so physical input can take over.
             magnitude = _ec_math.hypot(x, y)
             divisor = max(1., magnitude)
             radius = max(0., min(view.width, view.height) / 2. - 18)
-            wheel_cursor.left = view.width / 2. + x / divisor * radius - 14
-            wheel_cursor.top = view.height / 2. - y / divisor * radius - 14
+            wheel_cursor.left = view.width / 2. + x / divisor * radius - 16
+            wheel_cursor.top = view.height / 2. - y / divisor * radius - 16
             if _ec_math.hypot(x, y) < .04:
                 self.button, self.degree, self.more_started, self.expansion_degree = None, None, None, None
+                self.button_key = None
                 view.ResetFromCenter()
                 return
             degree = _ec_math.degrees(_ec_math.atan2(x, y)) % 360
-            expanded = view.secondLayerCont.isExpanded
             button_layer = view.secondLayerCont if expanded else view.firstLayerCont
             if expanded and self.expansion_degree is not None:
                 if abs((degree - self.expansion_degree + 180) % 360 - 180) < view.stepSize / 2. + 6:
@@ -268,16 +275,22 @@ def _ec_radial_open(uicore, target, controller):
             if self.degree is not None and abs((degree - self.degree + 180) % 360 - 180) < view.stepSize / 2. + 6:
                 degree = self.degree
             button = view.FindMyButton(degree, button_layer, view.stepSize)
-            changed = button is not self.button
+            button_key = (expanded,button.degree,getattr(button.actionButton,'labelPath',button.actionButton.labelText)) if button else None
+            changed = button_key != self.button_key
+            if changed:
+                self.range_focus = False
+            self.button_key = button_key
             self.button = button
             self.degree = button.degree if button else None
             view.HiliteOneButton(button, button_layer)
             view.SelectButton(None)
             if button is None:
+                self.last_range_vector, self.range_focus = None, False
                 view.ClearOptionRangeText()
                 return
             action = button.actionButton
             if isinstance(action, RadialMenuActioSecondLevel):
+                self.last_range_vector, self.range_focus = None, False
                 if changed:
                     self.more_started = now
                 if not expanded and self.more_started is not None and now - self.more_started >= .25:
@@ -286,6 +299,9 @@ def _ec_radial_open(uicore, target, controller):
                 return
             self.more_started = None
             if isinstance(action, RadialMenuRangeAction):
+                self.last_range_vector = (x,y,expanded)
+                if range_direction:
+                    self.range_focus = True
                 ranges = list(action.rangeList)
                 if not ranges:
                     return
@@ -301,10 +317,12 @@ def _ec_radial_open(uicore, target, controller):
                 self.range_direction = range_direction
                 self.range_values[range_key] = action.currentRange
                 action.percOfAllRange = float(index) / max(1, len(ranges)-1)
+                view.rangeCont.display = True
                 view.SetOptionRangeText(FmtDist(action.currentRange), True)
                 view.SetRangeCircle(button.degree, action.percOfAllRange)
                 view.MoveMouseRangeCallback(True, action.currentRange, action.percOfAllRange)
             else:
+                self.last_range_vector, self.range_focus = None, False
                 view.ClearOptionRangeText()
                 view.MoveMouseRangeCallback(False)
             view.SelectButton(button)
@@ -330,9 +348,16 @@ def _ec_radial_open(uicore, target, controller):
                     return
                 action.currentRange, action.percOfAllRange = range_value, range_fraction
             original = action.OnButtonClick
+            range_callback = action.func if range_value is not None else None
+            range_target = action.funcArgs if range_value is not None else None
             self.finished, self.confirmed = True, True
             def guarded_action(*args, **kwargs):
                 if self.confirmed and controller.active and _ec_radial_valid(uicore, target):
+                    if range_callback is not None:
+                        # Native refresh/closing can replace range controls.
+                        # Pin the validated native callback and selected values
+                        # instead of reading a mutable action after queuing.
+                        return range_callback(range_target,range_value,range_fraction)
                     return original(*args, **kwargs)
             action.OnButtonClick = guarded_action
             view.ClickButton(current)

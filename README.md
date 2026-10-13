@@ -116,8 +116,8 @@ Hold **RB** over a targetable space bracket, overview entry, or locked-target ic
 | Control While Open | Action |
 | :--- | :--- |
 | <img src="assets/buttons/left-stick.svg" width="28" height="28" alt="Left Stick"> **Left Stick** | Move the cursor within the wheel to select a wedge. Hold toward **More** to open its additional options. |
-| <img src="assets/buttons/dpad.svg" width="28" height="28" alt="D-Pad Up / Down"> **D-Pad Up / Down** | Increase / decrease the selected action's range. |
-| <img src="assets/buttons/rb.svg" width="28" height="28" alt="Right Bumper"> **Release Right Bumper** | Execute the highlighted action once. Center the left stick before releasing to cancel. |
+| <img src="assets/buttons/dpad.svg" width="28" height="28" alt="D-Pad Up / Down"> **D-Pad Up / Down** | Increase / decrease a range action's distance. Keeps that action selected, including after centering the stick. |
+| <img src="assets/buttons/rb.svg" width="28" height="28" alt="Right Bumper"> **Release Right Bumper** | Execute the highlighted action once. Release without a highlighted action to cancel. |
 | <img src="assets/buttons/b.svg" width="28" height="28" alt="B"> **B** | Cancel immediately. |
 
 Normal cursor, click, camera, zoom, flight, and stop controls pause while the wheel is open. Mouse/keyboard activity cancels it. Release the controls after closing to resume normal controller input.
@@ -130,7 +130,7 @@ Normal cursor, click, camera, zoom, flight, and stop controls pause while the wh
 - **Left-Click / Target Radial** shares one configurable binding and the click hold timer. Existing bindings and preferences are preserved.
 - The wheel displays its activation and cancel buttons. If the activation binding includes **B**, the cancel prompt uses a free face button, or left-stick press if necessary.
 - If the activation binding uses **D-Pad Up / Down**, the right stick adjusts range vertically instead; its normal camera actions remain paused.
-- Returning the left stick to center clears selection and returns an expanded wheel to its first level.
+- Centering the left stick clears selection unless a range adjustment is active. D-pad input can restore the last range action on the current level; use **B** to cancel after adjusting a range.
 
 </details>
 

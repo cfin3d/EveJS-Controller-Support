@@ -91,6 +91,7 @@ class ControllerSettings(object):
         self.Scroll, self.Combo, self.Checkbox, self.Slider = ScrollContainer, Combo, Checkbox, Slider
         self.Button, self.Edit, self.Container, self.Label, self.Header = Button, SingleLineEditText, Container, EveLabelSmall, SystemMenuHeader
         self.panels, self.widgets, self.connected, self.previous = [], {}, {}, {}
+        self.callbacks = {}
         self.capture, self.identifying, self.ready, self.collected = None, False, False, set()
         self.deadline, self.last_scan, self.message_until = 0., -1., 0.
         self.selected_profile, self.closed, self.rendered_settings = None, False, None
@@ -187,6 +188,7 @@ class ControllerSettings(object):
         panel._controller_loaded = True
         settings = self.controller.settings
         self.widgets = {}
+        self.callbacks = {}
         self.rendered_settings = settings
         self.Header(parent=panel, text='Controller', padTop=0)
         row = self.row(panel)
@@ -256,6 +258,8 @@ class ControllerSettings(object):
             if self.save({key: value}):
                 label.text = title + ': ' + str(value)
                 control.SetValue(value)
+        # Native Signal stores functions weakly; retain each closure for this panel.
+        self.callbacks[key] = change
         self.widgets[key] = self.Slider(parent=row, align=self.const.TOTOP, padTop=22, height=16, minValue=low, maxValue=high, value=value, isInteger=step >= 1, callback=change)
 
     def begin_capture(self, action):
@@ -401,6 +405,7 @@ class ControllerSettings(object):
                 menu.panelsByID.pop(PANEL_ID, None)
                 panel.Close()
         self.panels = []
+        self.callbacks.clear()
 
 
 def install(controller, api):

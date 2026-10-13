@@ -258,7 +258,7 @@ class Magnet(object):
         self.reset()
 
     def reset(self):
-        self.target, self.escaped, self.travel = None, None, 0.
+        self.target, self.escaped, self.travel, self.engaged = None, None, 0., False
 
     def step(self, x, y, dx, dy, target, dt, settings, clicking):
         if target is None:
@@ -266,24 +266,37 @@ class Magnet(object):
             return dx, dy, False
         identity, tx, ty, width, height = target
         if identity != self.target:
-            self.target, self.travel = identity, 0.
+            self.target, self.travel, self.engaged = identity, 0., False
             if identity != self.escaped:
                 self.escaped = None
         distance = math.hypot(dx, dy)
-        if clicking or not settings['cursorSnap'] or distance / max(.001, dt) > settings['snapMaxSpeed']:
-            self.escaped = identity
+        if clicking or not settings['cursorSnap']:
+            self.engaged = False
             return dx, dy, False
-        if not distance or identity == self.escaped:
+        if not distance:
+            self.escaped, self.travel = None, 0.
+        if distance / max(.001, dt) > settings['snapMaxSpeed']:
+            self.engaged = False
             return dx, dy, False
-        self.travel += distance
-        if self.travel > settings['snapRadius'] * .35:
-            self.escaped = identity
+        if identity == self.escaped:
             return dx, dy, False
         cx, cy = tx + width / 2., ty + height / 2.
-        if math.hypot(cx - x, cy - y) > settings['snapRadius']:
+        outward = dx * (x - cx) + dy * (y - cy) > .01
+        self.travel = self.travel + distance if outward else 0.
+        if self.travel > settings['snapRadius'] * .35:
+            self.escaped = identity
+            self.engaged = False
             return dx, dy, False
+        edge_distance = math.hypot(max(tx - x, 0., x - tx - width), max(ty - y, 0., y - ty - height))
+        if edge_distance > settings['snapRadius'] or not distance and not self.engaged:
+            return dx, dy, False
+        self.engaged = True
         pull = 1. - math.exp(-10. * dt)
-        return dx + (cx - x) * pull, dy + (cy - y) * pull, True
+        ax, ay = (cx - x) * pull, (cy - y) * pull
+        length, maximum = math.hypot(ax, ay), settings['snapMaxSpeed'] * dt
+        if length > maximum:
+            ax, ay = ax * maximum / length, ay * maximum / length
+        return dx + ax, dy + ay, True
 
 
 class _Point(ctypes.Structure):
@@ -316,6 +329,11 @@ class _Input(ctypes.Structure):
     _fields_ = [('kind', ctypes.c_uint32), ('data', _Union)]
 
 
+class _MouseHook(ctypes.Structure):
+    _fields_ = [('point', _Point), ('data', ctypes.c_uint32), ('flags', ctypes.c_uint32),
+               ('time', ctypes.c_uint32), ('extra', ctypes.c_size_t)]
+
+
 class WindowsInput(object):
     def __init__(self):
         self.user = ctypes.WinDLL('user32', use_last_error=True)
@@ -334,6 +352,7 @@ class WindowsInput(object):
         self.pending = False
         self.physical_buttons = set()
         self.keys = set()
+        self.mouse_hook, self.mouse_callback = None, None
         self.xinput = None
         for name in ('xinput1_4', 'xinput9_1_0'):
             try:
@@ -345,6 +364,43 @@ class WindowsInput(object):
             raise RuntimeError('Controller input API unavailable')
         self.xinput.argtypes = [ctypes.c_uint32, ctypes.POINTER(_State)]
         self.xinput.restype = ctypes.c_uint32
+
+    def start_listener(self):
+        callback_type = ctypes.WINFUNCTYPE(ctypes.c_ssize_t, ctypes.c_int, ctypes.c_size_t, ctypes.c_void_p)
+        self.user.SetWindowsHookExW.argtypes = [ctypes.c_int, callback_type, ctypes.c_void_p, ctypes.c_uint32]
+        self.user.SetWindowsHookExW.restype = ctypes.c_void_p
+        self.user.CallNextHookEx.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_size_t, ctypes.c_void_p]
+        self.user.CallNextHookEx.restype = ctypes.c_ssize_t
+        self.user.UnhookWindowsHookEx.argtypes = [ctypes.c_void_p]
+        kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+        kernel.GetModuleHandleW.argtypes = [ctypes.c_wchar_p]
+        kernel.GetModuleHandleW.restype = ctypes.c_void_p
+        self.mouse_callback = callback_type(self.mouse_event)
+        # EVE's main UI thread supplies the message pump; never suppress events.
+        self.mouse_hook = self.user.SetWindowsHookExW(14, self.mouse_callback, kernel.GetModuleHandleW(None), 0)
+        if not self.mouse_hook:
+            self.mouse_callback = None
+            raise ctypes.WinError(ctypes.get_last_error())
+
+    def mouse_event(self, code, message, address):
+        try:
+            if code >= 0 and address:
+                event = ctypes.cast(address, ctypes.POINTER(_MouseHook)).contents
+                if event.extra != TAG:
+                    self.pending = True
+                    if message in (0x201, 0x204):
+                        self.physical_buttons.add(1 if message == 0x201 else 2)
+                    elif message in (0x202, 0x205):
+                        self.physical_buttons.discard(1 if message == 0x202 else 2)
+        except Exception:
+            pass
+        return self.user.CallNextHookEx(self.mouse_hook, code, message, address)
+
+    def stop_listener(self):
+        if self.mouse_hook:
+            self.user.UnhookWindowsHookEx(self.mouse_hook)
+            self.mouse_hook = None
+        self.mouse_callback = None
 
     def read(self, index):
         if index != -1:
@@ -429,6 +485,10 @@ class WindowsInput(object):
         return pending
 
     def event(self, obj, event_id, param, constants):
+        if getattr(self, 'mouse_hook', None) and event_id not in (getattr(constants, 'UI_KEYDOWN', None), getattr(constants, 'UI_KEYUP', None)):
+            # Deferred native drag/mouse events do not carry reliable Win32 tags.
+            # The OS observer already classified the original mouse message.
+            return True
         if self.user.GetMessageExtraInfo() == TAG:
             return True
         self.pending = True
@@ -523,6 +583,9 @@ class Controller(object):
         self.constants = constants
         events = [getattr(constants, name) for name in ('UI_MOUSEMOVE', 'UI_MOUSEMOVEDRAG', 'UI_MOUSEWHEEL', 'UI_MOUSEDOWN', 'UI_MOUSEUP', 'UI_KEYDOWN', 'UI_KEYUP')]
         self.cookie = self.ui.event.RegisterForTriuiEvents(events, self.on_input)
+        listener = getattr(self.native, 'start_listener', None)
+        if listener:
+            listener()
 
     def on_input(self, obj, event_id, param):
         if not self.active:
@@ -583,10 +646,13 @@ class Controller(object):
         dx, dy = axes('cursor', pad, self.settings)
         dx, dy = dx * self.settings['cursorSpeed'] * dt, -dy * self.settings['cursorSpeed'] * dt
         hover = self.helpers['_ec_hover_target'](self.ui)
+        snap_target = hover
+        if snap_target is None and self.settings['cursorSnap'] and '_ec_snap_target' in self.helpers:
+            snap_target = self.helpers['_ec_snap_target'](self.ui, self.settings['snapRadius'])
         target = None
-        if hover is not None:
+        if snap_target is not None:
             left, top, width, height = self.native.bounds()
-            target = (hover['id'], left + hover['x'] * width, top + hover['y'] * height, hover['w'] * width, hover['h'] * height)
+            target = (snap_target['id'], left + snap_target['x'] * width, top + snap_target['y'] * height, snap_target['w'] * width, snap_target['h'] * height)
         dx, dy, snapped = self.magnet.step(x, y, dx, dy, target, dt, self.settings, matches('leftClick', pad, self.settings) or matches('rightClick', pad, self.settings))
         dx, dy = dx + self.remainder_x, dy + self.remainder_y
         step_x, step_y = int(dx), int(dy)
@@ -601,20 +667,36 @@ class Controller(object):
         settings_open = bool(menu_layer is not None and getattr(menu_layer, 'display', False) and
                              any(getattr(child, 'display', False) and not getattr(child, 'destroyed', False) for child in getattr(menu_layer, 'children', [])))
         session = getattr(_builtins, 'session', None)
-        if not settings_open and (rx or ry or zy) and session is not None and getattr(session, 'solarsystemid', None) and not getattr(session, 'stationid', None) and not getattr(session, 'structureid', None):
+        if not settings_open and (rx or ry or zy) and session is not None and getattr(session, 'charid', None):
             sm = getattr(_builtins, 'sm', None)
-            camera = sm.GetService('sceneManager').GetActiveSpaceCamera() if sm else None
+            scene = sm.GetService('sceneManager') if sm else None
+            camera = scene.GetActiveCamera() if scene else None
             if camera is not None:
-                if rx or ry:
-                    camera.Orbit(rx * self.settings['cameraSpeed'] * dt * .005, ry * (1 if self.settings['invertCameraPan'] else -1) * self.settings['cameraSpeed'] * dt * .005)
-                if zy:
-                    camera.Zoom(-zy * self.settings['cameraZoomSpeed'] * dt)
+                orbit, zoom = getattr(camera, 'Orbit', None), getattr(camera, 'Zoom', None)
+                if (rx or ry) and callable(orbit):
+                    orbit(rx * self.settings['cameraSpeed'] * dt * .005, ry * (1 if self.settings['invertCameraPan'] else -1) * self.settings['cameraSpeed'] * dt * .005)
+                if zy and callable(zoom):
+                    zoom(-zy * self.settings['cameraZoomSpeed'] * dt)
         if action and not settings_open:
-            print('EVEJS_CONTROLLER:' + self.helpers['_ec_navigation'](action, self.ui))
+            print('EVEJS_CONTROLLER:' + self.helpers['_ec_navigation'](action, self.ui, self.dispatch_rpc))
         if settings_open:
             self.gestures.pause_navigation(pad, self.settings)
             stop, stop_fill = False, 0.
         self.overlay.update(True, self.settings['cursorRing'], snapped, fills, stop, stop_fill, dt)
+
+    def dispatch_rpc(self, function, *args):
+        import uthread
+        session = getattr(_builtins, 'session', None)
+        identity = tuple(getattr(session, key, None) for key in ('charid', 'shipid', 'solarsystemid'))
+        def send():
+            current = getattr(_builtins, 'session', None)
+            if not self.active or identity != tuple(getattr(current, key, None) for key in ('charid', 'shipid', 'solarsystemid')) or getattr(current, 'mutating', False) or getattr(current, 'stationid', None) or getattr(current, 'structureid', None):
+                return
+            try:
+                function(*args)
+            except Exception as error:
+                print('EVEJS_CONTROLLER:Navigation failed: ' + type(error).__name__)
+        uthread.new(send)
 
     def close(self):
         if not self.active:
@@ -629,10 +711,15 @@ class Controller(object):
                     self.cookie = None
             finally:
                 try:
-                    if self.menu:
-                        self.menu.close()
+                    listener = getattr(self.native, 'stop_listener', None)
+                    if listener:
+                        listener()
                 finally:
-                    self.overlay.close()
+                    try:
+                        if self.menu:
+                            self.menu.close()
+                    finally:
+                        self.overlay.close()
 
     def run(self):
         import blue

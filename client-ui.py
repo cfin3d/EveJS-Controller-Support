@@ -5,6 +5,7 @@
 import json as _ec_json
 import os as _ec_os
 import time as _ec_time
+import math as _ec_math
 try:
     import __builtin__ as _ec_builtins
 except ImportError:
@@ -12,9 +13,12 @@ except ImportError:
 
 
 def _ec_hover_target(uicore):
+    return _ec_target_bounds(uicore, getattr(getattr(uicore, 'uilib', None), 'mouseOver', None))
+
+
+def _ec_target_bounds(uicore, node):
     desktop = getattr(uicore, 'desktop', None)
     uilib = getattr(uicore, 'uilib', None)
-    node = getattr(uilib, 'mouseOver', None)
     if desktop is None or node is None:
         return None
     try:
@@ -59,6 +63,37 @@ def _ec_hover_target(uicore):
     return None
 
 
+_ec_snap_cache = None
+
+
+def _ec_snap_target(uicore, radius):
+    global _ec_snap_cache
+    try:
+        px, py = uicore.ScaleDpi(uicore.uilib.x), uicore.ScaleDpi(uicore.uilib.y)
+        now = _ec_time.time()
+        modal_id = id(uicore.registry.GetModalWindow())
+        if _ec_snap_cache and _ec_snap_cache[4] == modal_id and now - _ec_snap_cache[0] < .08 and _ec_math.hypot(px - _ec_snap_cache[1], py - _ec_snap_cache[2]) < radius * .5:
+            return _ec_snap_cache[3]
+        best, best_distance = None, None
+        dx, dy, dw, dh = uicore.desktop.GetAbsolute()
+        for distance in (radius * .5, radius):
+            for index in range(8):
+                angle = index * _ec_math.pi / 4.
+                unused, node = uicore.uilib.PickScreenPosition(int(px + _ec_math.cos(angle) * distance), int(py + _ec_math.sin(angle) * distance))
+                target = _ec_target_bounds(uicore, node)
+                if target is None:
+                    continue
+                cx = uicore.ScaleDpi(dx + (target['x'] + target['w'] / 2.) * dw)
+                cy = uicore.ScaleDpi(dy + (target['y'] + target['h'] / 2.) * dh)
+                candidate_distance = _ec_math.hypot(cx - px, cy - py)
+                if best_distance is None or candidate_distance < best_distance:
+                    best, best_distance = target, candidate_distance
+        _ec_snap_cache = (now, px, py, best, modal_id)
+        return best
+    except Exception:
+        return None
+
+
 class _CameraCenterCoordinates(object):
     def __init__(self, original, x, y):
         self.original, self.x, self.y = original, x, y
@@ -77,7 +112,42 @@ class _CameraCenterUi(object):
         return getattr(self.original, name)
 
 
-def _ec_call_center_direction(native, camera, uicore):
+class _QueuedPark(object):
+    def __init__(self, original, dispatch):
+        self.original, self.dispatch = original, dispatch
+
+    def __getattr__(self, name):
+        return getattr(self.original, name)
+
+    def CmdGotoDirection(self, *args):
+        self.dispatch(self.original.CmdGotoDirection, *args)
+
+
+class _QueuedMichelle(object):
+    def __init__(self, original, dispatch):
+        self.original, self.dispatch = original, dispatch
+
+    def __getattr__(self, name):
+        return getattr(self.original, name)
+
+    def GetRemotePark(self):
+        park = self.original.GetRemotePark()
+        return _QueuedPark(park, self.dispatch) if park is not None else None
+
+
+class _QueuedServices(object):
+    def __init__(self, original, dispatch):
+        self.original, self.dispatch = original, dispatch
+
+    def __getattr__(self, name):
+        return getattr(self.original, name)
+
+    def GetService(self, name):
+        service = self.original.GetService(name)
+        return _QueuedMichelle(service, self.dispatch) if name == 'michelle' else service
+
+
+def _ec_call_center_direction(native, camera, uicore, dispatch=None):
     import types
     # Reuse the client's own flight function with private read-only coordinates.
     # Do not move the OS cursor, replace uicore, or modify native function globals.
@@ -89,11 +159,13 @@ def _ec_call_center_direction(native, camera, uicore):
         raise RuntimeError('Native flight function is unavailable')
     private = dict(namespace)
     private['uicore'] = _CameraCenterUi(uicore)
+    if dispatch is not None:
+        private['sm'] = _QueuedServices(namespace.get('sm', getattr(_ec_builtins, 'sm', None)), dispatch)
     centered = types.FunctionType(code, private, 'EveControllerCameraCenterFlight', defaults, closure)
     return centered(camera)
 
 
-def _ec_navigation(action, uicore):
+def _ec_navigation(action, uicore, dispatch=None):
     session = getattr(_ec_builtins, 'session', None)
     sm = getattr(_ec_builtins, 'sm', None)
     if sm is None or session is None or not getattr(session, 'charid', None) or not getattr(session, 'shipid', None):
@@ -101,7 +173,10 @@ def _ec_navigation(action, uicore):
     if getattr(session, 'mutating', False) or not getattr(session, 'solarsystemid', None) or getattr(session, 'stationid', None) or getattr(session, 'structureid', None):
         return 'Navigation unavailable: not flying in space'
     if action == 'stop':
-        uicore.cmd.CmdStopShip()
+        if dispatch is None:
+            uicore.cmd.CmdStopShip()
+        else:
+            dispatch(uicore.cmd.CmdStopShip)
         return 'Stop ship requested'
     if action != 'fly':
         return 'Navigation unavailable: unknown action'
@@ -109,7 +184,9 @@ def _ec_navigation(action, uicore):
     if camera is None or sm.GetService('michelle').GetRemotePark() is None:
         return 'Navigation unavailable: space camera not ready'
     from eve.client.script.ui.camera.cameraUtil import SetShipDirection
-    _ec_call_center_direction(SetShipDirection, camera, uicore)
+    # Queue only the remote request. Native notification/prediction runs now,
+    # without waiting for the server reply or blocking controller polling.
+    _ec_call_center_direction(SetShipDirection, camera, uicore, dispatch)
     return 'Camera-center flight requested'
 
 

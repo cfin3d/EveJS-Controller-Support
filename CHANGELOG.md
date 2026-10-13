@@ -45,6 +45,14 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 
 ### Fixed
 
+- Enable controller camera panning and zoom in station and structure hangars, using the client's active camera while keeping ship commands restricted to space.
+- Classify mouse input from tagged Windows mouse messages before EVE defers UI events. Controller-generated mouse movement/drag notifications no longer trigger mouse/keyboard takeover or release confirmed held clicks.
+- Keep physical mouse/keyboard takeover responsive, preserve physically held mouse buttons, and remove the native mouse observer when the mod stops.
+- Retain slider callbacks for the lifetime of the Controller panel. Native weak signal references previously allowed the callbacks to disappear, so moving a slider could fail to save or apply its value.
+- Attract to nearby native UI controls through read-only hit tests that honor clipping, occlusion and modal windows. Cache geometry briefly to limit repeated picking.
+- Recover attraction after a fast approach, finish gentle attraction after the stick returns to center, and only treat sustained outward movement as an escape. Suppress attraction while clicking or dragging.
+- Queue camera-center flight's remote request independently so native client prediction does not wait for a delayed server reply. Flight still occurs on short-press release; one-second holds only stop the ship.
+- Keep controller polling responsive while flight/stop RPCs await replies, and reject queued commands after changing ships, docking, session transitions or disabling the mod.
 - Resolve the native UI singleton from `carbonui.uicore`. This client does not expose it through builtins, which previously caused startup to exit before registering the Controller category.
 - Register the Controller settings category without requiring a connected controller, and show **No Controller Connected** in its input status.
 - Report ready, unavailable-UI, and unsupported-build startup states in the client login output instead of silently returning without a category.

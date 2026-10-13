@@ -102,7 +102,7 @@ Switching is automatic. Mouse/keyboard input cancels unfinished controller holds
 | <img src="assets/buttons/left-stick.svg" width="28" height="28" alt="Left Stick"> **Left Stick** | Move the cursor. Small movements are precise; full deflection is fast. |
 | <img src="assets/buttons/lb.svg" width="28" height="28" alt="Left Bumper"> **Left Bumper** | Hold **0.5 seconds** for right-click. |
 | <img src="assets/buttons/rb.svg" width="28" height="28" alt="Right Bumper"> **Right Bumper** | Hold **0.5 seconds** for left-click; continue holding and move the cursor to drag. |
-| <img src="assets/buttons/right-stick.svg" width="28" height="28" alt="Right Stick"> **Right Stick** | Pan/rotate the camera. |
+| <img src="assets/buttons/right-stick.svg" width="28" height="28" alt="Right Stick"> **Right Stick** | Pan/rotate the camera in space or while docked. |
 | <img src="assets/buttons/lt.svg" width="28" height="28" alt="Left Trigger"> <img src="assets/buttons/right-stick.svg" width="28" height="28" alt="Right Stick"> **Hold Left Trigger + Right Stick** | Move **up** to zoom in or **down** to zoom out. Release the trigger to resume panning. |
 | <img src="assets/buttons/right-stick.svg" width="28" height="28" alt="Right Stick Press"> **Right Stick — Short Press** | Release before one second to fly toward camera center. |
 | <img src="assets/buttons/right-stick.svg" width="28" height="28" alt="Right Stick Hold"> **Right Stick — Hold** | Hold **one second** to request stop. |
@@ -119,7 +119,7 @@ These are the default bindings. Release a bumper early to cancel its click. A lo
 | **Orange Arc** | Stop confirmation. |
 | **Center Dot** | Flight direction; hidden beneath menus and when UI covers camera center. |
 
-- **UI Attraction:** move slowly toward a control to attract the cursor; stronger movement escapes it.
+- **UI Attraction:** move slowly toward a nearby control to attract the cursor; strong or sustained outward movement escapes it. Attraction pauses while clicking or dragging.
 - **Hold Reset:** changing targets or moving more than 10 pixels restarts an unfinished click hold.
 
 </details>

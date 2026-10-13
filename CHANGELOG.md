@@ -48,6 +48,11 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 
 ### Fixed
 
+- Consider neighboring targets while already hovering a control, including small controls between radial samples. Confirm attraction targets through native hit tests and reject covered target centers.
+- Stabilize target selection at adjacent-control boundaries, let sustained outward movement select the next item, and let reversing the stick re-enter an escaped item without first returning to neutral. Finish attraction when the stick is released without pulling back to an item just escaped.
+- Include the Neocom service's open panels and wide Neocom entries in attraction, including nested groups and submenus. Reject entries under hidden ancestors and refresh nearby geometry after small cursor movements or menu changes.
+- Cancel the cinematic undock camera through its native transition on controller pan or zoom, then control the active primary camera immediately, matching native mouse behavior.
+- Use the native manual-flight heading simulation and predicted steering command for camera-center flight when available, avoiding the ordinary direction command's two-tick owner echo delay. Send one command on short-press release, retain the ordinary command as a fallback, and keep the authoritative ship simulation unchanged.
 - Prevent cursor refreshes and coalesced controller movement with missing Windows tags from repeatedly switching to mouse/keyboard mode. Ignore stationary movement notifications while retaining immediate takeover from real movement, clicks, scrolling, and keyboard input.
 - Exclude Windows gamepad virtual-key states from keyboard activity detection.
 - Render the idle and moving cursor ring entirely in solid white, including its thick outer stroke, without requiring a click or hold.

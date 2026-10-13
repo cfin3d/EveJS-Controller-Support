@@ -278,37 +278,63 @@ class Magnet(object):
 
     def reset(self):
         self.target, self.escaped, self.travel, self.engaged = None, None, 0., False
+        self.escape_direction = None
+
+    def choose(self, x, y, dx, dy, targets, settings):
+        length = math.hypot(dx, dy)
+        direction = (dx / length, dy / length) if length else None
+        if self.escape_direction and direction and sum(a * b for a, b in zip(self.escape_direction, direction)) < -.25:
+            self.escaped, self.escape_direction = None, None
+        candidates = []
+        for target in targets:
+            identity, tx, ty, width, height = target
+            if identity == self.escaped:
+                continue
+            edge = math.hypot(max(tx - x, 0., x - tx - width), max(ty - y, 0., y - ty - height))
+            if edge > settings['snapRadius']:
+                continue
+            vx, vy = tx + width / 2. - x, ty + height / 2. - y
+            distance = math.hypot(vx, vy)
+            if self.escaped and direction and vx * direction[0] + vy * direction[1] < -2:
+                continue
+            score = edge + min(distance, settings['snapRadius'] * 2) * .35
+            if identity == self.target:
+                score -= 4  # Hysteresis prevents alternating between neighbors.
+            candidates.append((score, identity, target))
+        return min(candidates)[2] if candidates else None
 
     def step(self, x, y, dx, dy, target, dt, settings, clicking, input_speed=None):
         if target is None:
-            self.reset()
+            self.target, self.engaged, self.travel = None, False, 0.
             return dx, dy, False
         identity, tx, ty, width, height = target
         if identity != self.target:
             self.target, self.travel, self.engaged = identity, 0., False
-            if identity != self.escaped:
-                self.escaped = None
         distance = math.hypot(dx, dy)
         if clicking or not settings['cursorSnap']:
             self.engaged = False
             return dx, dy, False
         if not distance:
-            self.escaped, self.travel = None, 0.
+            self.travel = 0.
         speed = distance / max(.001, dt) if input_speed is None else input_speed
         if speed > settings['snapMaxSpeed']:
             self.engaged = False
             return dx, dy, False
         if identity == self.escaped:
-            return dx, dy, False
+            if self.escape_direction and distance and (dx * self.escape_direction[0] + dy * self.escape_direction[1]) / distance < -.25:
+                self.escaped, self.escape_direction = None, None
+            else:
+                return dx, dy, False
         cx, cy = tx + width / 2., ty + height / 2.
         outward = dx * (x - cx) + dy * (y - cy) > .01
         self.travel = self.travel + distance if outward else 0.
         if self.travel > min(settings['snapRadius'] * .35, min(width, height) * .25):
             self.escaped = identity
+            self.escape_direction = (dx / distance, dy / distance)
             self.engaged = False
             return dx, dy, False
         edge_distance = math.hypot(max(tx - x, 0., x - tx - width), max(ty - y, 0., y - ty - height))
-        if edge_distance > settings['snapRadius'] or not distance and not self.engaged:
+        if edge_distance > settings['snapRadius']:
             return dx, dy, False
         self.engaged = True
         pull = 1. - math.exp(-10. * dt)
@@ -701,13 +727,17 @@ class Controller(object):
         dx, dy = self.motion.step(dx, dy, dt)
         dx, dy = dx * self.settings['cursorSpeed'] * dt, -dy * self.settings['cursorSpeed'] * dt
         hover = self.helpers['_ec_hover_target'](self.ui)
-        snap_target = hover
-        if snap_target is None and self.settings['cursorSnap'] and '_ec_snap_target' in self.helpers:
-            snap_target = self.helpers['_ec_snap_target'](self.ui, self.settings['snapRadius'])
-        target = None
-        if snap_target is not None:
+        targets = [hover] if hover else []
+        if self.settings['cursorSnap'] and '_ec_snap_targets' in self.helpers:
+            targets = self.helpers['_ec_snap_targets'](self.ui, self.settings['snapRadius'])
+        elif not targets and self.settings['cursorSnap'] and '_ec_snap_target' in self.helpers:
+            nearby = self.helpers['_ec_snap_target'](self.ui, self.settings['snapRadius'])
+            targets = [nearby] if nearby else []
+        geometry = []
+        if targets:
             left, top, width, height = self.native.bounds()
-            target = (snap_target['id'], left + snap_target['x'] * width, top + snap_target['y'] * height, snap_target['w'] * width, snap_target['h'] * height)
+            geometry = [(item['id'], left + item['x'] * width, top + item['y'] * height, item['w'] * width, item['h'] * height) for item in targets]
+        target = self.magnet.choose(x, y, dx, dy, geometry, self.settings)
         dx, dy, snapped = self.magnet.step(x, y, dx, dy, target, dt, self.settings, matches('leftClick', pad, self.settings) or matches('rightClick', pad, self.settings), requested_speed)
         dx, dy = dx + self.remainder_x, dy + self.remainder_y
         step_x, step_y = int(dx), int(dy)
@@ -727,6 +757,11 @@ class Controller(object):
             scene = sm.GetService('sceneManager') if sm else None
             camera = scene.GetActiveCamera() if scene else None
             if camera is not None:
+                # Native mouse input cancels the cinematic undock camera.
+                switch = getattr(camera, 'SwitchToPrimaryCamera', None)
+                if callable(switch):
+                    switch()
+                    camera = scene.GetActiveCamera()
                 orbit, zoom = getattr(camera, 'Orbit', None), getattr(camera, 'Zoom', None)
                 if (rx or ry) and callable(orbit):
                     orbit(rx * self.settings['cameraSpeed'] * dt * .005, ry * (1 if self.settings['invertCameraPan'] else -1) * self.settings['cameraSpeed'] * dt * .005)

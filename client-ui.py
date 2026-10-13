@@ -19,8 +19,14 @@ def _ec_hover_target(uicore):
 def _ec_active_menus(uicore):
     layers = getattr(uicore, 'layer', None)
     menus = [getattr(layers, name, None) for name in ('menu', 'utilmenu')]
-    return [menu for menu in menus if menu is not None and getattr(menu, 'display', False) and
-            any(getattr(child, 'display', False) and not getattr(child, 'destroyed', False) for child in getattr(menu, 'children', []))]
+    menus = [menu for menu in menus if menu is not None and getattr(menu, 'display', False) and
+             any(getattr(child, 'display', False) and not getattr(child, 'destroyed', False) for child in getattr(menu, 'children', []))]
+    # Neocom panels are maintained separately from context-menu layers.
+    service = getattr(getattr(_ec_builtins, 'sm', None), 'services', {}).get('neocom')
+    for panel in getattr(service, 'currPanels', []):
+        if panel is not None and getattr(panel, 'display', False) and not getattr(panel, 'destroyed', False) and panel not in menus:
+            menus.append(panel)
+    return menus
 
 
 def _ec_target_bounds(uicore, node):
@@ -47,6 +53,8 @@ def _ec_target_bounds(uicore, node):
             return None
         # Native mouseOver supplies EVE's hit-test result, respecting occlusion.
         # Take the nearest enabled clickable ancestor, never a nearby guessed box.
+        if any(getattr(ancestor, 'destroyed', False) or not getattr(ancestor, 'display', True) for ancestor in chain):
+            return None
         for candidate in chain:
             if getattr(candidate, 'destroyed', False) or not getattr(candidate, 'display', True):
                 return None
@@ -55,8 +63,9 @@ def _ec_target_bounds(uicore, node):
                 return None
             has_handler = getattr(candidate, 'HasEventHandler', None)
             entry = getattr(candidate, 'menuEntryData', None)
+            neocom = getattr(type(candidate), '__module__', '').endswith('.neocomPanelEntries') and getattr(candidate, 'btnData', None) is not None
             # Native context-menu rows execute on mouse-up rather than OnClick.
-            if not callable(has_handler) or not (has_handler('OnClick') or entry is not None and has_handler('OnMouseUp')):
+            if not callable(has_handler) or not (has_handler('OnClick') or (entry is not None or neocom) and has_handler('OnMouseUp')):
                 continue
             if entry is not None:
                 enabled = getattr(entry, 'IsEnabled', None)
@@ -69,7 +78,7 @@ def _ec_target_bounds(uicore, node):
             if callable(is_enabled) and not is_enabled():
                 return None
             x, y, w, h = candidate.GetAbsolute()
-            if w < 6 or h < 6 or w > 480 or h > 128 or w * h > 36000:
+            if w < 6 or h < 6 or w > (min(dw, 960) if entry is not None or neocom else 480) or h > 128 or w * h > 72000:
                 return None
             x, y = x - dx, y - dy
             if x < 0 or y < 0 or x + w > dw or y + h > dh:
@@ -84,32 +93,68 @@ def _ec_target_bounds(uicore, node):
 _ec_snap_cache = None
 
 
-def _ec_snap_target(uicore, radius):
+def _ec_snap_targets(uicore, radius):
     global _ec_snap_cache
     try:
         px, py = uicore.ScaleDpi(uicore.uilib.x), uicore.ScaleDpi(uicore.uilib.y)
         now = _ec_time.time()
-        modal_id = (id(uicore.registry.GetModalWindow()), tuple((id(menu), tuple(id(child) for child in menu.children if getattr(child, 'display', False) and not getattr(child, 'destroyed', False))) for menu in _ec_active_menus(uicore)))
-        if _ec_snap_cache and _ec_snap_cache[4] == modal_id and now - _ec_snap_cache[0] < .08 and _ec_math.hypot(px - _ec_snap_cache[1], py - _ec_snap_cache[2]) < radius * .5:
+        modal_id = (id(uicore), radius, id(uicore.registry.GetModalWindow()), uicore.desktop.GetAbsolute(), tuple((id(menu), tuple(id(child) for child in getattr(menu, 'children', []) if getattr(child, 'display', False) and not getattr(child, 'destroyed', False))) for menu in _ec_active_menus(uicore)))
+        if _ec_snap_cache and _ec_snap_cache[4] == modal_id and now - _ec_snap_cache[0] < .04 and _ec_math.hypot(px - _ec_snap_cache[1], py - _ec_snap_cache[2]) < 2:
             return _ec_snap_cache[3]
-        best, best_distance = None, None
-        dx, dy, dw, dh = uicore.desktop.GetAbsolute()
-        for distance in (radius * .5, radius):
+        targets, neighbors = {}, {}
+        points = [(px, py)]
+        for distance in (radius * .25, radius * .5, radius):
             for index in range(8):
                 angle = index * _ec_math.pi / 4.
-                unused, node = uicore.uilib.PickScreenPosition(int(px + _ec_math.cos(angle) * distance), int(py + _ec_math.sin(angle) * distance))
-                target = _ec_target_bounds(uicore, node)
-                if target is None:
-                    continue
-                cx = uicore.ScaleDpi(dx + (target['x'] + target['w'] / 2.) * dw)
-                cy = uicore.ScaleDpi(dy + (target['y'] + target['h'] / 2.) * dh)
-                candidate_distance = _ec_math.hypot(cx - px, cy - py)
-                if best_distance is None or candidate_distance < best_distance:
-                    best, best_distance = target, candidate_distance
-        _ec_snap_cache = (now, px, py, best, modal_id)
-        return best
+                points.append((px + _ec_math.cos(angle) * distance, py + _ec_math.sin(angle) * distance))
+        for x, y in points:
+            unused, node = uicore.uilib.PickScreenPosition(int(x), int(y))
+            target = _ec_target_bounds(uicore, node)
+            if target is not None:
+                targets[target['id']] = target
+            # Recover small adjacent controls between sample rays. Enumerate
+            # only local siblings and confirm each through native picking.
+            for level in range(3):
+                if node is None or node is uicore.desktop:
+                    break
+                for child in list(getattr(getattr(node, 'parent', None), 'children', []))[:128]:
+                    neighbors[id(child)] = child
+                node = getattr(node, 'parent', None)
+        dx, dy, dw, dh = uicore.desktop.GetAbsolute()
+        for node in list(neighbors.values())[:256]:
+            target = _ec_target_bounds(uicore, node)
+            if target is None or target['id'] in targets:
+                continue
+            tx, ty = uicore.ScaleDpi(dx + target['x'] * dw), uicore.ScaleDpi(dy + target['y'] * dh)
+            tw, th = uicore.ScaleDpi(target['w'] * dw), uicore.ScaleDpi(target['h'] * dh)
+            if _ec_math.hypot(max(tx - px, 0., px - tx - tw), max(ty - py, 0., py - ty - th)) > radius:
+                continue
+            unused, picked = uicore.uilib.PickScreenPosition(int(max(tx + 1, min(tx + tw - 1, px))), int(max(ty + 1, min(ty + th - 1, py))))
+            visible = _ec_target_bounds(uicore, picked)
+            if visible is not None and visible['id'] == target['id']:
+                targets[target['id']] = target
+        result = []
+        for target in targets.values():
+            cx = uicore.ScaleDpi(dx + (target['x'] + target['w'] / 2.) * dw)
+            cy = uicore.ScaleDpi(dy + (target['y'] + target['h'] / 2.) * dh)
+            unused, picked = uicore.uilib.PickScreenPosition(int(cx), int(cy))
+            visible = _ec_target_bounds(uicore, picked)
+            if visible is not None and visible['id'] == target['id']:
+                result.append(target)
+        result.sort(key=lambda target: target['id'])
+        _ec_snap_cache = (now, px, py, result, modal_id)
+        return result
     except Exception:
+        return []
+
+
+def _ec_snap_target(uicore, radius):
+    targets = _ec_snap_targets(uicore, radius)
+    if not targets:
         return None
+    dx, dy, dw, dh = uicore.desktop.GetAbsolute()
+    return min(targets, key=lambda target: _ec_math.hypot(dx + (target['x'] + target['w'] / 2.) * dw - uicore.uilib.x,
+                                                        dy + (target['y'] + target['h'] / 2.) * dh - uicore.uilib.y))
 
 
 class _CameraCenterCoordinates(object):
@@ -138,7 +183,39 @@ class _QueuedPark(object):
         return getattr(self.original, name)
 
     def CmdGotoDirection(self, *args):
-        self.dispatch(self.original.CmdGotoDirection, *args)
+        steer = getattr(self.original, 'CmdSteerDirection', None)
+        if callable(steer) and _ec_predict_heading(args):
+            self.dispatch(steer, *args)
+        else:
+            self.dispatch(self.original.CmdGotoDirection, *args)
+
+
+def _ec_predict_heading(direction):
+    # Reuse native manual-flight rotation prediction on its private simulation
+    # ball. Do not change the authoritative ship ball or emit repeat steering.
+    try:
+        manager = getattr(_ec_builtins, 'sm', None)
+        service = getattr(manager, 'services', {}).get('flightControls')
+        if service is None and manager is not None:
+            service = manager.GetService('flightControls')
+        simulation = getattr(service, 'simulation', None)
+        session = getattr(_ec_builtins, 'session', None)
+        if simulation is None or not getattr(service, 'running', False) or getattr(getattr(simulation, 'ship', None), 'id', None) != getattr(session, 'shipid', None):
+            return False
+        if not simulation.CanControl():
+            return False
+        import blue
+        simulation.AttachBalls()
+        simulation.direction = tuple(direction)
+        simulation.lastCalled = blue.os.GetSimTime()
+        simulation.controlling = True
+        try:
+            simulation.UpdateDirection()
+        finally:
+            simulation.controlling = False
+        return True
+    except Exception:
+        return False
 
 
 class _QueuedMichelle(object):

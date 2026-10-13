@@ -60,6 +60,7 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 
 ### Fixed
 
+- Use the client's registered `radialmenu` service when installing controller radial handling. The incorrect service lookup disabled controller radial activation and allowed the ordinary mouse radial to open, bypassing the bounded left-stick cursor and exclusive menu controls.
 - Fix native binding buttons rendering as thin strips by replacing fill alignment with explicit centered dimensions. Keep input, Clear/Remove, and editor buttons compact with consistent height.
 - Compare existing bindings again before saving an accepted replacement; reject concurrent edits instead of silently overwriting them. Preserve unrelated launcher preferences through atomic saves.
 - Suppress custom actions during Settings, capture, radial navigation, and input handover; cancel queued actions on focus/input/session/configuration changes and prevent held combinations from replaying after takeover.

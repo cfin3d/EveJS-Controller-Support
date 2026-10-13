@@ -118,7 +118,7 @@ def _ec_radial_valid(uicore, target):
 
 
 def _ec_radial_install(controller):
-    service = _ec_builtins.sm.GetService('radialMenuSvc')
+    service = _ec_builtins.sm.GetService('radialmenu')
     original = service.TryExpandActionMenu
     def guarded(*args, **kwargs):
         native = controller.native

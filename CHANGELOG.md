@@ -24,6 +24,8 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 
 ### Changed
 
+- Simplify the README with a compact usage/control guide, expandable details, and consistent title case for headings and labels.
+- Remove the neutral-input instruction from the installation guide and omit unassigned controls from the displayed mappings.
 - Move controller polling, cursor rendering and navigation into the EVE process.
 - Replace the continuously running companion with a short-lived launcher setup helper.
 - Use general controller-support branding and clearly identify current XInput coverage.
@@ -38,7 +40,7 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 - The mouse-drag camera anchor and its configuration fields.
 - Device-specific branding and the additional compatibility/testing paragraph from the README.
 
-### Input and lifecycle
+### Input and Lifecycle
 
 - Physical mouse/keyboard input cancels pending controller actions, releases owned clicks and restores the native pointer.
 - A stationary held stick/button cannot immediately reclaim input after mouse/keyboard takeover; fresh controller activity is required.
@@ -48,7 +50,7 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 - Preserve physically held mouse buttons while releasing controller ownership.
 - Leave left-stick press, triggers, face buttons, D-pad and View/Menu without gameplay actions.
 
-### Compatibility and validation
+### Compatibility and Validation
 
 - Target EveJS **0.12.9**, launcher **1.0.53+**, and Windows x64 EVE client **build 3396210**.
 - Keep native and Docker server backends, with controller input inside the Windows client.

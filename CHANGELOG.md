@@ -6,6 +6,10 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 
 ### Added
 
+- Show the most recently highlighted radial range action beneath the **Range** prompt, followed by its native formatted distance. Update the distance with each adjustment, retain the readout when moving away, and reserve additional space below the wheel to keep the prompts on screen.
+- Select/View opens native Neocom controller navigation, with a remappable **Open Neocom** action in Controller settings. D-pad Up/Down selects items immediately with bounded repeat; Right enters submenus and Left restores the parent selection.
+- Smooth 140 ms cursor transitions bounded to the active Neocom panel and native item highlighting. Normal cursor movement, camera/ship commands, clicks, and custom actions pause until the menu closes.
+- Neocom A selection and B cancellation use the configurable click/activation hold, defaulting to 500 ms, with cursor-ring progress. D-pad input remains immediate. Group selection enters its submenu; native item activation collapses Neocom and restores normal cursor control.
 - White controller button icons in native binding rows, including modifier combinations, stick axes, and custom inputs. Transparent client textures are exported from the matching SVG assets.
 - A visible, wheel-local radial cursor driven by absolute left-stick position and bounded to the circular menu, including full diagonal input. Physical mouse/keyboard takeover remains available.
 - Custom controller-to-EVE-shortcut bindings in the native Controller settings category, with modifier/key drop-downs, a resolved action preview, controller combination capture, editing/removal, and saved-profile support. No custom bindings are assigned by default.
@@ -41,6 +45,7 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 
 ### Changed
 
+- Rename the shared timing control to **Click / Activation Hold** to cover normal clicks, radial opening, and Neocom A/B activation. Preserve its stored key and existing values.
 - Reformat Controller settings into spaced sections, paired half-width slider fields with separate value labels, and uniform action/input/clear columns. Apply matching rows to custom bindings and keep modifier/key selection in a compact two-column editor.
 - Include custom bindings in profiles and Restore Defaults while retaining existing device selection and saved profiles.
 - Share the left-click binding and confirmation timer with target radial activation. Preserve normal UI hold-to-click/drag, existing preferences, and ordinary native mouse radial behavior.
@@ -60,6 +65,8 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 
 ### Fixed
 
+- Preserve previously assigned Select/View inputs when adding the new default Neocom binding. Keep held controls from carrying actions across menu transitions; restart A confirmation when selection changes, prioritize B cancellation, and activate once per hold.
+- Temporarily suppress native Neocom hover expansion during controller navigation and restore owned hooks on selection, cancellation, physical input, focus loss, disconnection, settings/configuration changes, or session transitions.
 - Match the radial cursor to the normal cursor's 26 px white ring, white strokes, and 3 px white dot; remove its older dark outer circle while retaining circular bounds.
 - Keep D-pad range selection stable across native control refreshes, show the range circle, and retain range focus after adjustment so centering the stick does not discard the chosen action. D-pad input can restore the most recent range wedge on the current menu level.
 - Pin the validated native range callback, target argument, distance, and range fraction before queuing confirmation. Native option refreshes or closing-control changes cannot reset the distance or replace Orbit with another callback before it executes.

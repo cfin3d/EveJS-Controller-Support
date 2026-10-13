@@ -188,7 +188,7 @@
       },
       {
         "id": "clickHoldMilliseconds",
-        "label": "Click / Radial Hold (ms)",
+        "label": "Click / Activation Hold (ms)",
         "type": "integer",
         "default": 500,
         "file": "preferences",
@@ -200,7 +200,7 @@
         "minimum": 200,
         "maximum": 2000,
         "step": 50,
-        "description": "Default 500 ms. Hold over a valid space target to open its radial menu; ordinary UI retains hold-to-click and drag. Release early to cancel."
+        "description": "Default 500 ms. Hold over a valid space target to open its radial menu; ordinary UI retains hold-to-click and drag. Neocom A selection and B cancellation use this same hold time; D-pad navigation is immediate. Release early to cancel the pending hold."
       },
       {
         "id": "rightStickStopMilliseconds",

@@ -102,12 +102,36 @@ Switching is automatic. Mouse/keyboard input cancels unfinished controller holds
 | <img src="assets/buttons/left-stick.svg" width="28" height="28" alt="Left Stick"> **Left Stick** | Move the cursor. Small movements are precise; full deflection is fast. |
 | <img src="assets/buttons/lb.svg" width="28" height="28" alt="Left Bumper"> **Left Bumper** | Hold **0.5 seconds** for right-click. |
 | <img src="assets/buttons/rb.svg" width="28" height="28" alt="Right Bumper"> **Right Bumper** | Hold **0.5 seconds** over a target to open its radial menu. On normal UI, hold for left-click and continue holding to drag. |
+| <img src="assets/buttons/view.svg" width="28" height="28" alt="Select / View"> **Select / View** | Open controller navigation in the Neocom menu. |
 | <img src="assets/buttons/right-stick.svg" width="28" height="28" alt="Right Stick"> **Right Stick** | Pan/rotate the camera in space or while docked. |
 | <img src="assets/buttons/lt.svg" width="28" height="28" alt="Left Trigger"> <img src="assets/buttons/right-stick.svg" width="28" height="28" alt="Right Stick"> **Hold Left Trigger + Right Stick** | Move **up** to zoom in or **down** to zoom out. Release the trigger to resume panning. |
 | <img src="assets/buttons/right-stick.svg" width="28" height="28" alt="Right Stick Press"> **Right Stick — Short Press** | Release before one second to fly toward camera center. |
 | <img src="assets/buttons/right-stick.svg" width="28" height="28" alt="Right Stick Hold"> **Right Stick — Hold** | Hold **one second** to request stop. |
 
 These are the default bindings. Release a bumper early to cancel its click. A long right-stick hold stops the ship without first issuing flight.
+
+### Neocom Navigation
+
+Press **Select / View** to open Neocom. The cursor moves smoothly between items and stays within the active menu panel.
+
+| Control While Open | Action |
+| :--- | :--- |
+| <img src="assets/buttons/dpad-up.svg" width="28" height="28" alt="D-Pad Up"> <img src="assets/buttons/dpad-down.svg" width="28" height="28" alt="D-Pad Down"> **D-Pad Up / Down** | Move between items immediately; hold to repeat. |
+| <img src="assets/buttons/dpad-right.svg" width="28" height="28" alt="D-Pad Right"> **D-Pad Right** | Enter a submenu immediately. |
+| <img src="assets/buttons/dpad-left.svg" width="28" height="28" alt="D-Pad Left"> **D-Pad Left** | Return to the parent menu immediately. |
+| <img src="assets/buttons/a.svg" width="28" height="28" alt="A"> **Hold A** | Fill the indicator to select an item. Groups open their submenu; opening an item collapses Neocom and restores normal cursor use. |
+| <img src="assets/buttons/b.svg" width="28" height="28" alt="B"> **Hold B** | Fill the indicator to close Neocom and restore normal cursor use. |
+
+**A/B holds default to 0.5 seconds**, configured by **Click / Activation Hold** in **Settings → Controller**. D-pad navigation has no activation hold. Pressing **Select / View** again also closes Neocom. Mouse/keyboard input ends controller navigation; normal gameplay and custom actions pause while it is active.
+
+<details>
+<summary><strong>Neocom Bindings and Activation</strong></summary>
+
+- Rebind **Open Neocom** in **Settings → Controller → Bindings**. Existing assignments to Select/View are preserved when updating; if that input was already used, assign Open Neocom yourself.
+- Releasing A or B before its hold completes cancels the pending activation. A's timer restarts when the highlighted item changes, and each hold activates only once. B takes priority over A when both are held.
+- Native hover expansion pauses during controller navigation, keeping submenu changes under D-pad control. Focus loss, disconnection, session changes, or opening Settings also closes the controller menu.
+
+</details>
 
 ### Target Radial Menu
 
@@ -126,6 +150,7 @@ Normal cursor, click, camera, zoom, flight, and stop controls pause while the wh
 <summary><strong>Radial Behavior and Bindings</strong></summary>
 
 - Uses EVE's native actions, disabled states, range values, icons, and animations. Available actions depend on the target.
+- Beneath **Range**, the prompts show the last highlighted range action and its selected distance. The value updates as you adjust it and remains visible when moving off that action.
 - Keeps the original target until closing; target loss, docking, session changes, or opening Settings cancels the wheel.
 - **Left-Click / Target Radial** shares one configurable binding and the click hold timer. Existing bindings and preferences are preserved.
 - The wheel displays its activation and cancel buttons. If the activation binding includes **B**, the cancel prompt uses a free face button, or left-stick press if necessary.
@@ -139,8 +164,8 @@ Normal cursor, click, camera, zoom, flight, and stop controls pause while the wh
 
 | Indicator | Meaning |
 | :--- | :--- |
-| **Cyan Arc** | Left-click or target radial confirmation. |
-| **Amber Arc** | Right-click confirmation. |
+| **Cyan Arc** | Left-click, target radial opening, or Neocom A confirmation. |
+| **Amber Arc** | Right-click confirmation or Neocom B cancellation. |
 | **Orange Arc** | Stop confirmation. |
 | **Center Dot** | Flight direction; hidden beneath menus and when UI covers camera center. |
 

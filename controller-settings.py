@@ -269,7 +269,7 @@ class ControllerSettings(object):
         self.check(panel, 'cursorSnap', 'UI Attraction')
         self.pair(panel, [('snapRadius','Attraction Radius (px)',8,64,1),('snapMaxSpeed','Attraction Speed Limit (px/s)',50,600,10)])
         self.Header(parent=panel, text='Hold Timing', padTop=12)
-        self.pair(panel, [('clickHoldMilliseconds','Click / Radial Hold (ms)',200,2000,50),('rightStickStopMilliseconds','Stop Hold (ms)',500,3000,100)])
+        self.pair(panel, [('clickHoldMilliseconds','Click / Activation Hold (ms)',200,2000,50),('rightStickStopMilliseconds','Stop Hold (ms)',500,3000,100)])
         self.pair(panel, [('triggerThreshold','Trigger Activation',10,240,5)])
         self.Header(parent=panel, text='Bindings', padTop=12)
         self.Label(parent=panel, align=self.const.TOTOP, text='Select An Input To Rebind. Hold Modifiers While Entering A Combination.', padBottom=12)

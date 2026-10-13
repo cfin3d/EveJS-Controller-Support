@@ -20,7 +20,8 @@
     "leftClick": "RB",
     "rightClick": "LB",
     "fly": "RS",
-    "stop": "RS"
+    "stop": "RS",
+    "neocom": "VIEW"
   },
   "customBindings": [],
   "profiles": {}

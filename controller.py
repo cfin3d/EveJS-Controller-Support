@@ -22,9 +22,10 @@ BUTTONS = [('LT', 0x10000), ('RT', 0x20000), ('LB', LB), ('RB', RB),
 BUTTON_BITS = dict(BUTTONS)
 ACTIONS = [('cursor', 'Move Cursor'), ('cameraPan', 'Pan Camera'),
            ('cameraZoom', 'Zoom Camera'), ('leftClick', 'Left-Click / Target Radial'),
-           ('rightClick', 'Right-Click'), ('fly', 'Fly Toward Camera Center'), ('stop', 'Stop Ship')]
+           ('rightClick', 'Right-Click'), ('fly', 'Fly Toward Camera Center'), ('stop', 'Stop Ship'),
+           ('neocom', 'Open Neocom')]
 DEFAULT_BINDINGS = dict(cursor='LEFT_STICK', cameraPan='RIGHT_STICK',
-                        cameraZoom='LT+RIGHT_STICK_Y', leftClick='RB', rightClick='LB', fly='RS', stop='RS')
+                        cameraZoom='LT+RIGHT_STICK_Y', leftClick='RB', rightClick='LB', fly='RS', stop='RS',neocom='VIEW')
 DEFAULTS = dict(schemaVersion=1, controllerIndex=-1, deadzone=.20, cursorSpeed=1100,
                 cameraSpeed=800, cursorRing=True, cursorSnap=True, snapRadius=28,
                 snapMaxSpeed=250, clickHoldMilliseconds=500, rightStickStopMilliseconds=1000,
@@ -174,7 +175,14 @@ def preferences(document):
     for name in ('cursorRing', 'cursorSnap', 'invertCameraPan'):
         if not isinstance(result[name], bool):
             raise ValueError('Invalid ' + name)
-    result['bindings'] = validate_bindings(document.get('bindings', {}))
+    incoming=document.get('bindings', {})
+    if isinstance(incoming,dict) and 'neocom' not in incoming:
+        legacy=list(incoming.values())
+        customs=document.get('customBindings', [])
+        if isinstance(customs,list):legacy.extend(item.get('controller','') for item in customs if isinstance(item,dict))
+        if any(isinstance(value,TEXT_TYPES) and binding_overlap(value,'VIEW') for value in legacy):
+            incoming=dict(incoming,neocom='')
+    result['bindings'] = validate_bindings(incoming)
     result['customBindings'] = custom_bindings(document.get('customBindings', []), result['bindings'])
     profiles = document.get('profiles', {})
     if not isinstance(profiles, dict) or len(profiles) > 20:
@@ -694,6 +702,7 @@ class Controller(object):
         self.remainder_x, self.remainder_y = 0., 0.
         self.menu = None
         self.radial, self.radial_hold, self.radial_restore = None, None, None
+        self.neocom, self.neocom_previous = None, False
         self.radial_gate, self.left_previous = False, False
         self.radial_available = '_ec_radial_open' in helpers
         self.custom_down, self.custom_epoch = set(), 0
@@ -732,13 +741,16 @@ class Controller(object):
             self.custom_epoch += 1
             pad = self.mode.previous
             self.custom_down = self.custom_pressed(pad) if pad else set()
-            if self.radial or self.radial_hold:
+            if self.radial or self.radial_hold or self.neocom:
                 self.radial_gate = True
             try:
+                if self.neocom:
+                    self.neocom.close()
                 if self.radial:
                     self.radial.close()
             finally:
                 self.radial = self.radial_hold = None
+                self.neocom, self.neocom_previous = None, False
                 self.left_previous = False
                 self.native.release()
         finally:
@@ -765,13 +777,42 @@ class Controller(object):
                 continue
             def execute(binding=dict(item)):
                 current = tuple(getattr(getattr(_builtins,'session',None),key,None) for key in ('charid','shipid','solarsystemid','stationid','structureid'))
-                if not self.active or epoch != self.custom_epoch or identity != current or self.mode.mode != 'controller' or not self.native.foreground() or self.radial or self.radial_gate:
+                if not self.active or epoch != self.custom_epoch or identity != current or self.mode.mode != 'controller' or not self.native.foreground() or self.radial or self.radial_gate or self.neocom:
                     return
                 try:
                     self.helpers['_ec_custom_execute'](self.ui, binding)
                 except Exception as error:
                     print('EVEJS_CONTROLLER:Custom shortcut unavailable: ' + type(error).__name__)
             uthread.new(execute)
+
+    def neocom_tick(self,pad,now,settings_open,dt):
+        pressed=matches('neocom',pad,self.settings)
+        rising=pressed and not self.neocom_previous
+        self.neocom_previous=pressed
+        if self.neocom:
+            fills={}
+            navigation=self.neocom
+            if settings_open or rising or not self.neocom.step(pad,now):
+                self.neocom.close()
+                self.neocom=None
+                self.radial_gate=True
+                self.custom_down=self.custom_pressed(pad)
+            else:fills=navigation.fills
+            self.native.release()
+            self.overlay.update(True,self.settings['cursorRing'],True,fills,False,0.,dt)
+            return True
+        if self.radial or self.radial_hold or self.radial_gate or settings_open or not rising:
+            return False
+        opener=self.helpers.get('_ec_neocom_open')
+        if opener is None:
+            return False
+        self.cancel()
+        self.neocom_previous=pressed
+        self.neocom=opener(self.ui,self,pad)
+        if self.neocom is None:
+            self.radial_gate=True
+        self.native.release()
+        return True
 
     def radial_tick(self, pad, x, y, now, settings_open):
         pressed = matches('leftClick', pad, self.settings)
@@ -888,6 +929,8 @@ class Controller(object):
         menu_layer = getattr(getattr(self.ui, 'layer', None), 'systemmenu', None)
         settings_open = bool(menu_layer is not None and getattr(menu_layer, 'display', False) and
                              any(getattr(child, 'display', False) and not getattr(child, 'destroyed', False) for child in getattr(menu_layer, 'children', [])))
+        if self.neocom_tick(pad,now,settings_open,dt):
+            return
         exclusive, radial_progress = self.radial_tick(pad, x, y, now, settings_open)
         if exclusive:
             return

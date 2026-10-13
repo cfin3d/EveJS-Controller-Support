@@ -152,7 +152,7 @@ def _ec_radial_open(uicore, target, controller):
         def SetPosition(self):
             margin = max(8, (320 - self.width) / 2. + 8)
             self.left = max(margin, min(uicore.desktop.width - self.width - margin, self.currentCenterX - self.width / 2.))
-            self.top = max(52, min(uicore.desktop.height - self.height - 86, self.currentCenterY - self.height / 2.))
+            self.top = max(52, min(uicore.desktop.height - self.height - 132, self.currentCenterY - self.height / 2.))
             self.currentCenterX, self.currentCenterY = self.left + self.width / 2., self.top + self.height / 2.
 
         def TryRepositionMouse(self, *args, **kwargs):
@@ -203,7 +203,7 @@ def _ec_radial_open(uicore, target, controller):
              state=constants.UI_DISABLED, color=(1.,1.,1.,1.))
         wheel_cursor.left, wheel_cursor.top = view.width / 2. - 16, view.height / 2. - 16
         hints = Container(parent=view, align=constants.TOPLEFT, left=(view.width - 320) / 2., top=view.height + 12,
-                          width=320, height=54, state=constants.UI_DISABLED)
+                          width=320, height=108, state=constants.UI_DISABLED)
         for index, (glyph, label) in enumerate((('LS', 'Select'), ('RS' if range_axis else '', 'Range'), (cancel_glyph, 'Cancel'), (controller.settings['bindings']['leftClick'], 'Release'))):
             x = index * 80 + 40
             line = VectorLineTrace(parent=hints, width=320, height=30, lineWidth=1.5, state=constants.UI_DISABLED)
@@ -220,6 +220,10 @@ def _ec_radial_open(uicore, target, controller):
                               state=constants.UI_DISABLED, color=(1.,1.,1.,1.))
             EveLabelSmall(parent=hints, text='<center>' + label + '</center>', align=constants.TOPLEFT, left=index*80+5, top=32, width=70,
                           state=constants.UI_DISABLED, color=(1.,1.,1.,.85))
+        range_name = EveLabelSmall(parent=hints, name='evejsControllerRangeAction', text='', align=constants.TOPLEFT,
+                                  left=62, top=49, width=116, maxLines=2, state=constants.UI_DISABLED, color=(1.,1.,1.,.85))
+        range_value = EveLabelSmall(parent=hints, name='evejsControllerRangeValue', text='', align=constants.TOPLEFT,
+                                   left=62, top=79, width=116, maxLines=1, state=constants.UI_DISABLED, color=(1.,1.,1.,1.))
     except Exception:
         view.Close()
         raise
@@ -236,6 +240,7 @@ def _ec_radial_open(uicore, target, controller):
             self.range_values = {}
             self.last_range_vector, self.range_focus = None, False
             self.cursor = wheel_cursor
+            self.range_name,self.range_value=range_name,range_value
 
         def valid(self):
             return not getattr(view, 'destroyed', False) and layer.radialMenu is view and _ec_radial_valid(uicore, target)
@@ -317,6 +322,8 @@ def _ec_radial_open(uicore, target, controller):
                 self.range_direction = range_direction
                 self.range_values[range_key] = action.currentRange
                 action.percOfAllRange = float(index) / max(1, len(ranges)-1)
+                range_name.text='<center>'+action.labelText+'</center>'
+                range_value.text='<center>'+FmtDist(action.currentRange)+'</center>'
                 view.rangeCont.display = True
                 view.SetOptionRangeText(FmtDist(action.currentRange), True)
                 view.SetRangeCircle(button.degree, action.percOfAllRange)
@@ -363,6 +370,183 @@ def _ec_radial_open(uicore, target, controller):
             view.ClickButton(current)
 
     return RadialSession()
+
+
+def _ec_neocom_open(uicore,controller,pad):
+    from eve.client.script.ui.shared.neocom.neocom import neocomPanelEntries as entries
+    service = _ec_builtins.sm.GetService('neocom')
+    session=getattr(_ec_builtins,'session',None)
+    if uicore.registry.GetModalWindow() is not None or not getattr(session,'charid',None) or getattr(session,'mutating',False):
+        return None
+
+    class NeocomSession(object):
+        def __init__(self):
+            self.closed=False
+            self.stack=[]
+            self.hooks=[]
+            self.previous_mask=pad[0] | (0x10000 if pad[5]>=controller.settings['triggerThreshold'] else 0) | (0x20000 if pad[6]>=controller.settings['triggerThreshold'] else 0)
+            self.direction,self.next_repeat=0,0.
+            self.transition=None
+            self.holds,self.fills={},{}
+            self.blocked=set(button for button in (0x1000,0x2000) if pad[0] & button)
+            self.epoch=controller.custom_epoch
+            self.identity=self.session_identity()
+            # Pause native mouse-hover expansion while controller focus moves.
+            # Restore only the methods this session still owns when it ends.
+            for cls in set(value for value in vars(entries).values() if isinstance(value,type) and issubclass(value,entries.PanelEntryBase)):
+                for name in ('OnMouseEnter','OnMouseExit'):
+                    original=cls.__dict__.get(name)
+                    if original is None:continue
+                    def guarded(row,*args,**kwargs):
+                        return None
+                    self.hooks.append((cls,name,original,guarded))
+                    setattr(cls,name,guarded)
+
+        def session_identity(self):
+            return tuple(getattr(getattr(_ec_builtins,'session',None),key,None) for key in ('charid','shipid','solarsystemid','stationid','structureid'))
+
+        def valid(self):
+            return not self.closed and controller.active and controller.custom_epoch==self.epoch and self.session_identity()==self.identity and not getattr(getattr(_ec_builtins,'session',None),'mutating',False) and controller.mode.mode=='controller' and controller.native.foreground() and uicore.registry.GetModalWindow() is None and self.stack and all(not getattr(panel,'destroyed',False) and getattr(panel,'display',True) and panel in service.currPanels for panel,index in self.stack)
+
+        def close(self):
+            if self.closed:return
+            self.closed=True
+            try:
+                service.CloseAllPanels()
+            finally:
+                for cls,name,original,guarded in self.hooks:
+                    if cls.__dict__.get(name) is guarded:setattr(cls,name,original)
+                self.hooks=[]
+                self.stack=[]
+                self.transition=None
+
+        def rows(self,panel):
+            rows=[]
+            pending=list(getattr(getattr(panel,'main',panel),'children',[]))
+            while pending and len(rows)<256:
+                row=pending.pop(0)
+                if getattr(row,'destroyed',False) or not getattr(row,'display',True):continue
+                if isinstance(row,entries.PanelEntryBase):
+                    if getattr(row,'state',0) in (1,2):continue
+                    enabled=getattr(row,'IsEnabled',None)
+                    if callable(enabled) and not enabled():continue
+                    x,y,w,h=row.GetAbsolute()
+                    if w>0 and h>0:rows.append(row)
+                else:pending.extend(list(getattr(row,'children',[])))
+            return sorted(rows,key=lambda row:row.GetAbsolute()[1])
+
+        def focus(self,index,now):
+            panel,old_index=self.stack[-1]
+            rows=self.rows(panel)
+            if not rows:return False
+            index=max(0,min(len(rows)-1,index))
+            for row in rows:row.SetDeselected()
+            row=rows[index]
+            row.SetSelected()
+            self.stack[-1]=(panel,index)
+            self.transition=(now,controller.native.position(),row)
+            return True
+
+        def selected(self):
+            panel,index=self.stack[-1]
+            rows=self.rows(panel)
+            return rows[index] if 0<=index<len(rows) else None
+
+        def is_group(self,row):
+            data=getattr(row,'btnData',None)
+            return isinstance(row,(entries.PanelEntryGroup,entries.PanelEntryBookmarks)) or callable(getattr(row,'ToggleNeocomPanel',None)) and not hasattr(data,'wnd') and len(getattr(data,'children',[]))>1
+
+        def enter(self,now):
+            row=self.selected()
+            if row is None or not self.is_group(row):return
+            row.ToggleNeocomPanel()
+            panel=getattr(row,'_openNeocomPanel',None)
+            if panel is not None and not getattr(panel,'destroyed',False):
+                self.stack.append((panel,0))
+                if not self.focus(0,now):
+                    self.stack.pop()
+                    service.ClosePanel(panel)
+                    self.focus(self.stack[-1][1],now)
+
+        def back(self,now):
+            if len(self.stack)>1:
+                panel,index=self.stack.pop()
+                if panel in service.currPanels:service.ClosePanel(panel)
+                self.focus(self.stack[-1][1],now)
+
+        def animate(self,now):
+            if not self.transition:return
+            started,start,row=self.transition
+            if getattr(row,'destroyed',False):return
+            dx,dy,dw,dh=uicore.desktop.GetAbsolute()
+            x,y,w,h=row.GetAbsolute()
+            left,top,sw,sh=controller.native.bounds()
+            target=(left+(x+w/2.-dx)*sw/dw,top+(y+h/2.-dy)*sh/dh)
+            panel,index=self.stack[-1]
+            px,py,pw,ph=panel.GetAbsolute()
+            limits=(left+(px-dx)*sw/dw,top+(py-dy)*sh/dh,left+(px+pw-dx)*sw/dw-1,top+(py+ph-dy)*sh/dh-1)
+            t=max(0.,min(1.,(now-started)/.14))
+            ease=t*t*(3.-2.*t)
+            start=(max(limits[0],min(limits[2],start[0])),max(limits[1],min(limits[3],start[1])))
+            controller.native.move(max(limits[0],min(limits[2],start[0]+(target[0]-start[0])*ease)),max(limits[1],min(limits[3],start[1]+(target[1]-start[1])*ease)))
+            if t>=1.:self.transition=None
+
+        def step(self,pad,now):
+            if not self.valid():return False
+            mask=pad[0] | (0x10000 if pad[5]>=controller.settings['triggerThreshold'] else 0) | (0x20000 if pad[6]>=controller.settings['triggerThreshold'] else 0)
+            rising=mask & ~self.previous_mask
+            self.previous_mask=mask
+            if rising & 4:self.back(now)
+            elif rising & 8:self.enter(now)
+            direction=(1 if mask & 2 else 0)-(1 if mask & 1 else 0)
+            if direction and (direction!=self.direction or now>=self.next_repeat):
+                self.focus(self.stack[-1][1]+direction,now)
+                self.next_repeat=now+(.35 if direction!=self.direction else .12)
+            self.direction=direction
+            if not self.valid():return False
+            self.fills={}
+            for button,indicator in ((0x2000,2),(0x1000,1)):
+                if button==0x1000 and mask & 0x2000:
+                    self.holds.pop(button,None)
+                    continue
+                if not mask & button:
+                    self.blocked.discard(button)
+                    self.holds.pop(button,None)
+                    continue
+                if button in self.blocked:continue
+                row=self.selected()
+                key=(id(self.stack[-1][0]),id(row)) if button==0x1000 else None
+                hold=self.holds.get(button)
+                if hold is None or hold[1]!=key:
+                    hold=(now,key)
+                    self.holds[button]=hold
+                progress=min(1.,max(0.,(now-hold[0])*1000./controller.settings['clickHoldMilliseconds']))
+                self.fills[indicator]=progress
+                if progress>=1.:
+                    self.blocked.add(button)
+                    self.holds.pop(button,None)
+                    if button==0x2000:return False
+                    if row is not None:
+                        if self.is_group(row):self.enter(now)
+                        else:
+                            # Use the row's native command/window/bookmark callback.
+                            row.OnClick()
+                            return False
+            self.animate(now)
+            return True
+
+    navigation=NeocomSession()
+    try:
+        service.CloseAllPanels()
+        panel=service.ShowEveMenu()
+        navigation.stack=[(panel,0)]
+        if not navigation.valid() or not navigation.focus(0,_ec_time.time()):
+            navigation.close()
+            return None
+        return navigation
+    except Exception:
+        navigation.close()
+        raise
 
 
 def _ec_active_menus(uicore):

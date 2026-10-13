@@ -188,7 +188,7 @@
       },
       {
         "id": "clickHoldMilliseconds",
-        "label": "Click Hold (ms)",
+        "label": "Click / Radial Hold (ms)",
         "type": "integer",
         "default": 500,
         "file": "preferences",
@@ -200,7 +200,7 @@
         "minimum": 200,
         "maximum": 2000,
         "step": 50,
-        "description": "Every controller mouse click waits for this hold. Default 500 ms. Release early to cancel; keep holding after confirmation to drag."
+        "description": "Default 500 ms. Hold over a valid space target to open its radial menu; ordinary UI retains hold-to-click and drag. Release early to cancel."
       },
       {
         "id": "rightStickStopMilliseconds",

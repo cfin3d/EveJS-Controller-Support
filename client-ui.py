@@ -16,6 +16,278 @@ def _ec_hover_target(uicore):
     return _ec_target_bounds(uicore, getattr(getattr(uicore, 'uilib', None), 'mouseOver', None))
 
 
+def _ec_radial_record(item_id):
+    from eve.client.script.parklife import targetMgr
+    session = getattr(_ec_builtins, 'session', None)
+    if session is None or not getattr(session, 'charid', None) or not getattr(session, 'solarsystemid', None) or any(getattr(session, key, None) for key in ('stationid', 'structureid', 'mutating')) or item_id == getattr(session, 'shipid', None):
+        return None
+    manager = getattr(_ec_builtins, 'sm', None)
+    park = manager.GetService('michelle').GetBallpark() if manager else None
+    slim = park.GetInvItem(item_id) if park else None
+    if slim is None or park.GetBall(item_id) is None or getattr(slim, 'groupID', None) in targetMgr.const.nonTargetableGroups:
+        return None
+    if not getattr(slim, 'typeID', None) or not getattr(slim, 'groupID', None):
+        return None
+    return park, slim, tuple(getattr(session, key, None) for key in ('charid', 'shipid', 'solarsystemid'))
+
+
+def _ec_radial_target(uicore):
+    # Use the current native pick only. Never look through a window or fall
+    # back to a selected object elsewhere on the screen.
+    try:
+        if uicore.registry.GetModalWindow() is not None or _ec_active_menus(uicore):
+            return None
+        unused, node = uicore.uilib.PickScreenPosition(int(uicore.ScaleDpi(uicore.uilib.x)), int(uicore.ScaleDpi(uicore.uilib.y)))
+        for level in range(24):
+            if node is None or node is uicore.desktop:
+                return None
+            if getattr(node, 'destroyed', False) or not getattr(node, 'display', True):
+                return None
+            node_class = getattr(node, '__class__', type(node))
+            if any(part in node_class.__name__.lower() for part in ('button', 'checkbox', 'edit', 'slider', 'scrollbar', 'resize')):
+                return None
+            modules = [getattr(kind, '__module__', '') for kind in node_class.__mro__]
+            surface = any(module.startswith(('eve.client.script.ui.inflight.bracket', 'eve.client.script.ui.inflight.overview.overviewScrollEntry')) for module in modules)
+            if surface:
+                if not _ec_radial_visible(uicore, node):
+                    return None
+                data = getattr(getattr(node, 'sr', None), 'node', None)
+                item_id = getattr(node, 'itemID', None) or getattr(node, 'id', None) or getattr(data, 'itemID', None)
+                record = _ec_radial_record(item_id) if item_id else None
+                if record is not None:
+                    park, slim, identity = record
+                    return dict(itemID=item_id, typeID=slim.typeID, groupID=slim.groupID, park=park, session=identity, owner=node)
+                return None
+            # Some native bracket labels delegate events to their bracket.
+            bracket = getattr(node, 'bracket', None)
+            node = bracket if bracket is not None else getattr(node, 'parent', None)
+    except Exception:
+        return None
+    return None
+
+
+def _ec_radial_visible(uicore, node):
+    for level in range(24):
+        if node is uicore.desktop:
+            return True
+        if node is None or getattr(node, 'destroyed', False) or not getattr(node, 'display', True):
+            return False
+        node = getattr(node, 'parent', None)
+    return False
+
+
+def _ec_radial_valid(uicore, target):
+    try:
+        if uicore.registry.GetModalWindow() is not None or not _ec_radial_visible(uicore, target['owner']):
+            return False
+        record = _ec_radial_record(target['itemID'])
+        return record is not None and record[0] is target['park'] and record[2] == target['session'] and record[1].typeID == target['typeID'] and record[1].groupID == target['groupID']
+    except Exception:
+        return False
+
+
+def _ec_radial_install(controller):
+    service = _ec_builtins.sm.GetService('radialMenuSvc')
+    original = service.TryExpandActionMenu
+    def guarded(*args, **kwargs):
+        native = controller.native
+        if controller.active and controller.mode.mode == 'controller' and getattr(native, 'owned', set()) and not getattr(native, 'pending', False):
+            return None
+        return original(*args, **kwargs)
+    service.TryExpandActionMenu = guarded
+    def restore():
+        if service.TryExpandActionMenu is guarded:
+            service.TryExpandActionMenu = original
+    return restore
+
+
+def _ec_radial_open(uicore, target, controller):
+    from eve.client.script.ui.shared.radialMenu.radialMenu import RadialMenuSpace
+    from eve.client.script.ui.shared.radialMenu.radialMenuActions import RadialMenuRangeAction, RadialMenuActioSecondLevel
+    from carbonui.primitives.container import Container
+    from carbonui.primitives.vectorlinetrace import VectorLineTrace
+    from eve.client.script.ui.control.eveLabel import EveLabelSmall
+    from carbon.common.script.util.format import FmtDist
+    import carbonui.const as constants
+
+    class ControllerRadial(RadialMenuSpace):
+        def InitializeCenterPoint(self, attributes):
+            self.originalX = self.currentCenterX = attributes.get('x', uicore.uilib.x)
+            self.originalY = self.currentCenterY = attributes.get('y', uicore.uilib.y)
+            self.offsetX = self.offsetY = 0
+            self.cursorClipped = False
+
+        def SetPosition(self):
+            margin = max(8, (320 - self.width) / 2. + 8)
+            self.left = max(margin, min(uicore.desktop.width - self.width - margin, self.currentCenterX - self.width / 2.))
+            self.top = max(52, min(uicore.desktop.height - self.height - 86, self.currentCenterY - self.height / 2.))
+            self.currentCenterX, self.currentCenterY = self.left + self.width / 2., self.top + self.height / 2.
+
+        def TryRepositionMouse(self, *args, **kwargs):
+            pass
+
+        def ResetCursor(self):
+            pass
+
+        def OnGlobalMove(self, *args):
+            return True
+
+        def OnMouseUp(self, *args):
+            pass
+
+        def OnMouseUpBlocker(self, *args):
+            pass
+
+        def IsRadialMenuButtonActive(self, *args):
+            return True
+
+    if not _ec_radial_valid(uicore, target):
+        return None
+    layer = uicore.layer.menu
+    layer.Flush()
+    try:
+        view = ControllerRadial(parent=layer, name='evejsControllerRadial', itemID=target['itemID'], typeID=target['typeID'],
+                                slimItem=_ec_radial_record(target['itemID'])[1], clickedObject=target['owner'],
+                                x=uicore.uilib.x, y=uicore.uilib.y, updateDisplayName=True, state=constants.UI_NORMAL)
+    except Exception:
+        for child in list(layer.children):
+            if getattr(child, 'name', None) == 'evejsControllerRadial':
+                child.Close()
+        raise
+    layer.radialMenu = view
+    activation = controller.settings['bindings']['leftClick'].split('+')
+    range_axis = 'UP' in activation or 'DOWN' in activation
+    cancel_glyph, cancel_mask = next((name, bit) for name, bit in (('B',0x2000),('A',0x1000),('X',0x4000),('Y',0x8000),('LS',0x40)) if name not in activation)
+    try:
+        hints = Container(parent=view, align=constants.TOPLEFT, left=(view.width - 320) / 2., top=view.height + 12,
+                          width=320, height=54, state=constants.UI_DISABLED)
+        for index, (glyph, label) in enumerate((('LS', 'Select'), ('RS' if range_axis else '', 'Range'), (cancel_glyph, 'Cancel'), (controller.settings['bindings']['leftClick'], 'Release'))):
+            x = index * 80 + 40
+            line = VectorLineTrace(parent=hints, width=320, height=30, lineWidth=1.5, state=constants.UI_DISABLED)
+            if index == 1 and not range_axis:
+                points = [(x-5,9),(x,4),(x+5,9),(x,4),(x,23),(x-5,18),(x,23),(x+5,18)]
+            elif index == 3:
+                points = [(x-18,5),(x+18,5),(x+20,7),(x+20,23),(x+18,25),(x-18,25),(x-20,23),(x-20,7),(x-18,5)]
+            else:
+                points = [(x + 12 * _ec_math.cos(i * _ec_math.pi / 16.), 15 + 12 * _ec_math.sin(i * _ec_math.pi / 16.)) for i in range(33)]
+            for point in points:
+                line.AddPoint(point, color=(1., 1., 1., .85))
+            if glyph:
+                EveLabelSmall(parent=hints, text='<center>' + glyph + '</center>', align=constants.TOPLEFT, left=x-19, top=7, width=38, maxLines=1,
+                              state=constants.UI_DISABLED, color=(1.,1.,1.,1.))
+            EveLabelSmall(parent=hints, text='<center>' + label + '</center>', align=constants.TOPLEFT, left=index*80+5, top=32, width=70,
+                          state=constants.UI_DISABLED, color=(1.,1.,1.,.85))
+    except Exception:
+        view.Close()
+        raise
+
+    class RadialSession(object):
+        def __init__(self):
+            self.view, self.target = view, target
+            self.cancel_mask = cancel_mask
+            self.range_axis = range_axis
+            self.finished, self.confirmed = False, False
+            self.button, self.degree, self.more_started, self.expansion_degree = None, None, None, None
+            self.range_direction, self.next_range = 0, 0.
+            self.range_values = {}
+
+        def valid(self):
+            return not getattr(view, 'destroyed', False) and layer.radialMenu is view and _ec_radial_valid(uicore, target)
+
+        def close(self):
+            self.finished, self.confirmed = True, False
+            if not getattr(view, 'destroyed', False):
+                view.Close()
+
+        def update(self, x, y, range_direction, now):
+            if self.finished or not self.valid():
+                return
+            if _ec_math.hypot(x, y) < .04:
+                self.button, self.degree, self.more_started, self.expansion_degree = None, None, None, None
+                view.ResetFromCenter()
+                return
+            degree = _ec_math.degrees(_ec_math.atan2(x, y)) % 360
+            expanded = view.secondLayerCont.isExpanded
+            button_layer = view.secondLayerCont if expanded else view.firstLayerCont
+            if expanded and self.expansion_degree is not None:
+                if abs((degree - self.expansion_degree + 180) % 360 - 180) < view.stepSize / 2. + 6:
+                    return
+                self.expansion_degree = None
+            if self.degree is not None and abs((degree - self.degree + 180) % 360 - 180) < view.stepSize / 2. + 6:
+                degree = self.degree
+            button = view.FindMyButton(degree, button_layer, view.stepSize)
+            changed = button is not self.button
+            self.button = button
+            self.degree = button.degree if button else None
+            view.HiliteOneButton(button, button_layer)
+            view.SelectButton(None)
+            if button is None:
+                view.ClearOptionRangeText()
+                return
+            action = button.actionButton
+            if isinstance(action, RadialMenuActioSecondLevel):
+                if changed:
+                    self.more_started = now
+                if not expanded and self.more_started is not None and now - self.more_started >= .25:
+                    view.UpdateSecondLevel(button, animate=True)
+                    self.expansion_degree, self.button, self.degree = button.degree, None, None
+                return
+            self.more_started = None
+            if isinstance(action, RadialMenuRangeAction):
+                ranges = list(action.rangeList)
+                if not ranges:
+                    return
+                range_key = (expanded, button.degree, getattr(action, 'labelPath', action.labelText))
+                action.currentRange = max(min(ranges), min(max(ranges), self.range_values.get(range_key, action.defaultRange)))
+                if changed:
+                    self.range_direction, self.next_range = 0, now
+                index = min(range(len(ranges)), key=lambda i: abs(ranges[i] - action.currentRange))
+                if range_direction and (range_direction != self.range_direction or now >= self.next_range):
+                    index = max(0, min(len(ranges)-1, index + range_direction))
+                    action.currentRange = ranges[index]
+                    self.next_range = now + (.35 if range_direction != self.range_direction else .15)
+                self.range_direction = range_direction
+                self.range_values[range_key] = action.currentRange
+                action.percOfAllRange = float(index) / max(1, len(ranges)-1)
+                view.SetOptionRangeText(FmtDist(action.currentRange), True)
+                view.SetRangeCircle(button.degree, action.percOfAllRange)
+                view.MoveMouseRangeCallback(True, action.currentRange, action.percOfAllRange)
+            else:
+                view.ClearOptionRangeText()
+                view.MoveMouseRangeCallback(False)
+            view.SelectButton(button)
+
+        def finish(self, confirm):
+            selected = view.selectedBtn
+            if not confirm or self.finished or not self.valid() or selected is None:
+                self.close()
+                return
+            label = selected.actionButton.labelText
+            range_value = getattr(selected.actionButton, 'currentRange', None)
+            range_fraction = getattr(selected.actionButton, 'percOfAllRange', None)
+            view.UpdateOptions()
+            button_layer = view.secondLayerCont if view.secondLayerCont.isExpanded else view.firstLayerCont
+            current = view.FindMyButton(selected.degree, button_layer, view.stepSize)
+            if current is None or current.actionButton.labelText != label:
+                self.close()
+                return
+            action = current.actionButton
+            if range_value is not None:
+                if not isinstance(action, RadialMenuRangeAction) or not action.rangeList or range_value < min(action.rangeList) or range_value > max(action.rangeList):
+                    self.close()
+                    return
+                action.currentRange, action.percOfAllRange = range_value, range_fraction
+            original = action.OnButtonClick
+            self.finished, self.confirmed = True, True
+            def guarded_action(*args, **kwargs):
+                if self.confirmed and controller.active and _ec_radial_valid(uicore, target):
+                    return original(*args, **kwargs)
+            action.OnButtonClick = guarded_action
+            view.ClickButton(current)
+
+    return RadialSession()
+
+
 def _ec_active_menus(uicore):
     layers = getattr(uicore, 'layer', None)
     menus = [getattr(layers, name, None) for name in ('menu', 'utilmenu')]

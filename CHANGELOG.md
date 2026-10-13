@@ -6,6 +6,10 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 
 ### Added
 
+- Target-aware controller radial menu: the existing left-click binding (RB by default) fills its confirmation ring for 500 ms, then opens EVE's native wheel over a valid targetable space bracket, overview entry, or locked-target icon.
+- Exclusive radial navigation with left-stick wedge selection, angular hysteresis, deliberate More/submenu expansion, D-pad range adjustment with bounded repeat, release-to-confirm, and B cancellation. Native icons, action labels, disabled states, range feedback, and closing animations are retained.
+- Minimal white controller prompts beneath the wheel; activation prompts follow the existing left-click binding and cancellation chooses a free button if that binding includes B. Add matching white B and D-pad SVG icons to the user guide.
+- Adapt radial range control to right-stick vertical movement when a custom activation binding occupies D-Pad Up/Down, avoiding unintentional range changes from the activation hold.
 - Native **Controller** category in EVE's Settings menu, with a matching white controller icon and native navigation, labels, buttons, sliders, toggles, and scrolling.
 - Connected-controller selection, live activity detection, and **Identify Controller**, with selection saved across sessions.
 - Action-based binding capture for cursor movement, camera pan/zoom, left/right click, camera-center flight, and stop, including button combinations and stick modifiers.
@@ -32,6 +36,7 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 
 ### Changed
 
+- Share the left-click binding and confirmation timer with target radial activation. Preserve normal UI hold-to-click/drag, existing preferences, and ordinary native mouse radial behavior.
 - Enlarge the controller cursor's main ring from an 18 px to a 26 px diameter, with a thicker solid white outline, a dark contrast edge, a larger white center dot, and brighter outer hold tracks.
 - Apply a finer 2.7-power cursor response and a short acceleration ramp everywhere. Preserve full-stick maximum speed, immediate stopping on direction release, prompt direction reversal, and the existing camera response.
 - Reduce attraction escape distance for short controls so fine movement can move between neighboring menu/list items more easily. Full-stick intent escapes attraction immediately, including while cursor speed ramps up.
@@ -48,6 +53,9 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 
 ### Fixed
 
+- Resolve radial targets only from the current native pick and recognized in-space target surfaces, with live ballpark, session, visibility, own-ship, and native non-targetable-group checks. Never fall back to a previously selected target or an object behind a window.
+- Suppress ordinary mouse-driven radial expansion for controller-owned UI clicks, without suppressing physical mouse input; restore the scoped service hook when the mod stops.
+- Keep chosen radial ranges across native option refreshes and final confirmation. Revalidate action availability, label, and target before dispatch, and guard deferred native callbacks against cancellation or target/session loss.
 - Consider neighboring targets while already hovering a control, including small controls between radial samples. Confirm attraction targets through native hit tests and reject covered target centers.
 - Stabilize target selection at adjacent-control boundaries, let sustained outward movement select the next item, and let reversing the stick re-enter an escaped item without first returning to neutral. Finish attraction when the stick is released without pulling back to an item just escaped.
 - Include the Neocom service's open panels and wide Neocom entries in attraction, including nested groups and submenus. Reject entries under hidden ancestors and refresh nearby geometry after small cursor movements or menu changes.
@@ -81,6 +89,8 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 
 ### Input and Lifecycle
 
+- Capture controller input exclusively while a radial is open or closing. Cancel on early hold release, target changes during the hold, target loss, physical input, focus loss, disconnect, session changes, Settings, configuration changes, or disable.
+- Clear pending gestures on radial entry, require released controls after exit to prevent held-input leakage, and leave the OS cursor position and mouse capture/clipping unchanged.
 - Physical mouse/keyboard input cancels pending controller actions, releases owned clicks and restores the native pointer.
 - A stationary held stick/button cannot immediately reclaim input after mouse/keyboard takeover; fresh controller activity is required.
 - Restrict input to the foreground client, and require neutral controls after focus changes or controller reconnection.

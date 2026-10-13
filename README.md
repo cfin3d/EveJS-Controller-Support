@@ -101,7 +101,7 @@ Switching is automatic. Mouse/keyboard input cancels unfinished controller holds
 | :--- | :--- |
 | <img src="assets/buttons/left-stick.svg" width="28" height="28" alt="Left Stick"> **Left Stick** | Move the cursor. Small movements are precise; full deflection is fast. |
 | <img src="assets/buttons/lb.svg" width="28" height="28" alt="Left Bumper"> **Left Bumper** | Hold **0.5 seconds** for right-click. |
-| <img src="assets/buttons/rb.svg" width="28" height="28" alt="Right Bumper"> **Right Bumper** | Hold **0.5 seconds** for left-click; continue holding and move the cursor to drag. |
+| <img src="assets/buttons/rb.svg" width="28" height="28" alt="Right Bumper"> **Right Bumper** | Hold **0.5 seconds** over a target to open its radial menu. On normal UI, hold for left-click and continue holding to drag. |
 | <img src="assets/buttons/right-stick.svg" width="28" height="28" alt="Right Stick"> **Right Stick** | Pan/rotate the camera in space or while docked. |
 | <img src="assets/buttons/lt.svg" width="28" height="28" alt="Left Trigger"> <img src="assets/buttons/right-stick.svg" width="28" height="28" alt="Right Stick"> **Hold Left Trigger + Right Stick** | Move **up** to zoom in or **down** to zoom out. Release the trigger to resume panning. |
 | <img src="assets/buttons/right-stick.svg" width="28" height="28" alt="Right Stick Press"> **Right Stick — Short Press** | Release before one second to fly toward camera center. |
@@ -109,12 +109,37 @@ Switching is automatic. Mouse/keyboard input cancels unfinished controller holds
 
 These are the default bindings. Release a bumper early to cancel its click. A long right-stick hold stops the ship without first issuing flight.
 
+### Target Radial Menu
+
+Hold **RB** over a targetable space bracket, overview entry, or locked-target icon until the cyan indicator fills. Windows, empty space, your own ship, and non-targetable objects do not open the controller radial.
+
+| Control While Open | Action |
+| :--- | :--- |
+| <img src="assets/buttons/left-stick.svg" width="28" height="28" alt="Left Stick"> **Left Stick** | Select a wedge. Hold toward **More** to open its additional options. |
+| <img src="assets/buttons/dpad.svg" width="28" height="28" alt="D-Pad Up / Down"> **D-Pad Up / Down** | Increase / decrease the selected action's range. |
+| <img src="assets/buttons/rb.svg" width="28" height="28" alt="Right Bumper"> **Release Right Bumper** | Execute the highlighted action once. Center the left stick before releasing to cancel. |
+| <img src="assets/buttons/b.svg" width="28" height="28" alt="B"> **B** | Cancel immediately. |
+
+Normal cursor, click, camera, zoom, flight, and stop controls pause while the wheel is open. Mouse/keyboard activity cancels it. Release the controls after closing to resume normal controller input.
+
+<details>
+<summary><strong>Radial Behavior and Bindings</strong></summary>
+
+- Uses EVE's native actions, disabled states, range values, icons, and animations. Available actions depend on the target.
+- Keeps the original target until closing; target loss, docking, session changes, or opening Settings cancels the wheel.
+- **Left-Click / Target Radial** shares one configurable binding and the click hold timer. Existing bindings and preferences are preserved.
+- The wheel displays its activation and cancel buttons. If the activation binding includes **B**, the cancel prompt uses a free face button, or left-stick press if necessary.
+- If the activation binding uses **D-Pad Up / Down**, the right stick adjusts range vertically instead; its normal camera actions remain paused.
+- Returning the left stick to center clears selection and returns an expanded wheel to its first level.
+
+</details>
+
 <details>
 <summary><strong>Cursor Feedback</strong></summary>
 
 | Indicator | Meaning |
 | :--- | :--- |
-| **Cyan Arc** | Left-click confirmation. |
+| **Cyan Arc** | Left-click or target radial confirmation. |
 | **Amber Arc** | Right-click confirmation. |
 | **Orange Arc** | Stop confirmation. |
 | **Center Dot** | Flight direction; hidden beneath menus and when UI covers camera center. |

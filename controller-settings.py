@@ -208,7 +208,7 @@ class ControllerSettings(object):
         self.slider(panel, 'snapRadius', 'Attraction Radius (px)', 8, 64, 1)
         self.slider(panel, 'snapMaxSpeed', 'Attraction Speed Limit (px/s)', 50, 600, 10)
         self.Header(parent=panel, text='Hold Timing', padTop=12)
-        self.slider(panel, 'clickHoldMilliseconds', 'Click Hold (ms)', 200, 2000, 50)
+        self.slider(panel, 'clickHoldMilliseconds', 'Click / Radial Hold (ms)', 200, 2000, 50)
         self.slider(panel, 'rightStickStopMilliseconds', 'Stop Hold (ms)', 500, 3000, 100)
         self.slider(panel, 'triggerThreshold', 'Trigger Activation', 10, 240, 5)
         self.Header(parent=panel, text='Bindings', padTop=12)

@@ -17,7 +17,7 @@ BUTTONS = [('LT', 0x10000), ('RT', 0x20000), ('LB', LB), ('RB', RB),
            ('VIEW', 0x20), ('MENU', 0x10), ('LS', 0x40), ('RS', RS)]
 BUTTON_BITS = dict(BUTTONS)
 ACTIONS = [('cursor', 'Move Cursor'), ('cameraPan', 'Pan Camera'),
-           ('cameraZoom', 'Zoom Camera'), ('leftClick', 'Left-Click'),
+           ('cameraZoom', 'Zoom Camera'), ('leftClick', 'Left-Click / Target Radial'),
            ('rightClick', 'Right-Click'), ('fly', 'Fly Toward Camera Center'), ('stop', 'Stop Ship')]
 DEFAULT_BINDINGS = dict(cursor='LEFT_STICK', cameraPan='RIGHT_STICK',
                         cameraZoom='LT+RIGHT_STICK_Y', leftClick='RB', rightClick='LB', fly='RS', stop='RS')
@@ -216,7 +216,7 @@ class Gestures(object):
             if matches(action, pad, settings, False):
                 self.blocked.add(action)
 
-    def step(self, pad, x, y, target, now, settings):
+    def step(self, pad, x, y, target, now, settings, suppress_left=False):
         pressed = matches('stop', pad, settings)
         flying = matches('fly', pad, settings)
         for name in list(self.blocked):
@@ -255,7 +255,7 @@ class Gestures(object):
             self.fly_was_pressed = flying
         held, fills = set(), {}
         for name, button in (('leftClick', 1), ('rightClick', 2)):
-            if not matches(name, pad, settings):
+            if name == 'leftClick' and suppress_left or not matches(name, pad, settings):
                 self.holds.pop(button, None)
                 continue
             hold = self.holds.get(button)
@@ -647,6 +647,9 @@ class Controller(object):
         self.cookie, self.constants = None, None
         self.remainder_x, self.remainder_y = 0., 0.
         self.menu = None
+        self.radial, self.radial_hold, self.radial_restore = None, None, None
+        self.radial_gate, self.left_previous = False, False
+        self.radial_available = '_ec_radial_open' in helpers
         try:
             self.menu = settings_api['install'](self, globals()) if settings_api else None
         except Exception:
@@ -664,6 +667,13 @@ class Controller(object):
         listener = getattr(self.native, 'start_listener', None)
         if listener:
             listener()
+        install = self.helpers.get('_ec_radial_install')
+        if install:
+            try:
+                self.radial_restore = install(self)
+            except Exception as error:
+                self.radial_available = False
+                print('EVEJS_CONTROLLER:Radial unavailable: ' + type(error).__name__)
 
     def on_input(self, obj, event_id, param):
         if not self.active:
@@ -672,13 +682,88 @@ class Controller(object):
 
     def cancel(self):
         try:
-            self.native.release()
+            if self.radial or self.radial_hold:
+                self.radial_gate = True
+            try:
+                if self.radial:
+                    self.radial.close()
+            finally:
+                self.radial = self.radial_hold = None
+                self.left_previous = False
+                self.native.release()
         finally:
             self.gestures.reset()
             self.magnet.reset()
             self.motion.reset()
             self.remainder_x, self.remainder_y = 0., 0.
             self.overlay.hide()
+
+    def radial_tick(self, pad, x, y, now, settings_open):
+        pressed = matches('leftClick', pad, self.settings)
+        rising = pressed and not self.left_previous
+        self.left_previous = pressed
+        if self.radial_gate:
+            neutral = input_mask(pad, self.settings) == 0 and stick(pad[1], pad[2], self.settings['deadzone']) == (0., 0.) and stick(pad[3], pad[4], self.settings['deadzone']) == (0., 0.)
+            if neutral:
+                self.radial_gate, self.left_previous = False, False
+            self.native.release()
+            self.overlay.update(True, self.settings['cursorRing'], False, {}, False, 0., .016)
+            return True, None
+        if self.radial:
+            radial = self.radial
+            if settings_open or pad[0] & getattr(radial, 'cancel_mask', 0x2000) or not radial.valid():
+                radial.close()
+                self.radial, self.radial_gate = None, True
+            elif not radial.finished:
+                if pressed:
+                    sx, sy = stick(pad[1], pad[2], self.settings['deadzone'])
+                    if getattr(radial, 'range_axis', False):
+                        range_y = stick(pad[3], pad[4], self.settings['deadzone'])[1]
+                        range_direction = 1 if range_y > .16 else -1 if range_y < -.16 else 0
+                    else:
+                        range_direction = (1 if pad[0] & 1 else 0) - (1 if pad[0] & 2 else 0)
+                    radial.update(sx, sy, range_direction, now)
+                else:
+                    # Re-read the stick on release so centering and releasing in
+                    # one frame cannot execute the previous wedge.
+                    sx, sy = stick(pad[1], pad[2], self.settings['deadzone'])
+                    radial.update(sx, sy, 0, now)
+                    radial.finish(released(self.settings['bindings']['leftClick'], pad, self.settings))
+            self.native.release()
+            return True, None
+        if not self.radial_available or settings_open:
+            return False, None
+        if rising:
+            target = self.helpers['_ec_radial_target'](self.ui)
+            if target:
+                self.radial_hold = (target, now, x, y)
+        if self.radial_hold:
+            target, started, start_x, start_y = self.radial_hold
+            if not pressed:
+                self.radial_hold = None
+                return False, None
+            current = self.helpers['_ec_radial_target'](self.ui)
+            if current is None or current['itemID'] != target['itemID'] or math.hypot(x - start_x, y - start_y) > 10 or not self.helpers['_ec_radial_valid'](self.ui, target):
+                self.radial_hold, self.radial_gate = None, True
+                self.native.release()
+                return True, None
+            progress = min(1., max(0., (now - started) * 1000. / self.settings['clickHoldMilliseconds']))
+            if progress >= 1.:
+                self.native.release()
+                self.gestures.reset()
+                self.magnet.reset()
+                self.motion.reset()
+                self.remainder_x = self.remainder_y = 0.
+                self.radial = self.helpers['_ec_radial_open'](self.ui, target, self)
+                self.radial_hold = None
+                self.overlay.hide()
+                if self.radial and hasattr(self.overlay, 'mask'):
+                    self.overlay.mask.show_ring(True)
+                if self.radial is None:
+                    self.radial_gate = True
+                return True, None
+            return False, progress
+        return False, None
 
     def load(self, now):
         if now - self.last_settings < .5:
@@ -722,6 +807,12 @@ class Controller(object):
             self.cancel()
             return
         x, y = self.native.position()
+        menu_layer = getattr(getattr(self.ui, 'layer', None), 'systemmenu', None)
+        settings_open = bool(menu_layer is not None and getattr(menu_layer, 'display', False) and
+                             any(getattr(child, 'display', False) and not getattr(child, 'destroyed', False) for child in getattr(menu_layer, 'children', [])))
+        exclusive, radial_progress = self.radial_tick(pad, x, y, now, settings_open)
+        if exclusive:
+            return
         dx, dy = axes('cursor', pad, self.settings)
         requested_speed = math.hypot(dx, dy) * self.settings['cursorSpeed']
         dx, dy = self.motion.step(dx, dy, dt)
@@ -744,13 +835,12 @@ class Controller(object):
         self.remainder_x, self.remainder_y = dx - step_x, dy - step_y
         if step_x or step_y:
             x, y = self.native.move(x + step_x, y + step_y)
-        held, fills, action, stop, stop_fill = self.gestures.step(pad, x, y, hover['id'] if hover else None, now, self.settings)
+        held, fills, action, stop, stop_fill = self.gestures.step(pad, x, y, hover['id'] if hover else None, now, self.settings, radial_progress is not None)
+        if radial_progress is not None:
+            fills[1] = radial_progress
         self.native.buttons(held)
         rx, ry = axes('cameraPan', pad, self.settings)
         zx, zy = axes('cameraZoom', pad, self.settings)
-        menu_layer = getattr(getattr(self.ui, 'layer', None), 'systemmenu', None)
-        settings_open = bool(menu_layer is not None and getattr(menu_layer, 'display', False) and
-                             any(getattr(child, 'display', False) and not getattr(child, 'destroyed', False) for child in getattr(menu_layer, 'children', [])))
         session = getattr(_builtins, 'session', None)
         if not settings_open and (rx or ry or zy) and session is not None and getattr(session, 'charid', None):
             sm = getattr(_builtins, 'sm', None)
@@ -809,7 +899,11 @@ class Controller(object):
                         if self.menu:
                             self.menu.close()
                     finally:
-                        self.overlay.close()
+                        try:
+                            if self.radial_restore:
+                                self.radial_restore()
+                        finally:
+                            self.overlay.close()
 
     def run(self):
         import blue

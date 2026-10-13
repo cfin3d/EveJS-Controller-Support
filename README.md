@@ -37,7 +37,7 @@
 
 ## Features
 
-- **Precision Cursor Control:** smooth analog movement and gentle attraction to UI controls.
+- **Precision Cursor Control:** finer movement with smooth acceleration everywhere, plus attraction to UI controls and context-menu items.
 - **Click Confirmation:** circular progress feedback with support for dragging.
 - **Camera and Ship Navigation:** pan, zoom, fly toward camera center, and stop.
 - **Controller Settings:** select a device, customize bindings, and save profiles in EVE's settings menu.
@@ -119,7 +119,8 @@ These are the default bindings. Release a bumper early to cancel its click. A lo
 | **Orange Arc** | Stop confirmation. |
 | **Center Dot** | Flight direction; hidden beneath menus and when UI covers camera center. |
 
-- **UI Attraction:** move slowly toward a nearby control to attract the cursor; strong or sustained outward movement escapes it. Attraction pauses while clicking or dragging.
+- **UI Attraction:** move slowly toward a nearby control or context-menu item; strong or sustained outward movement escapes attraction. It pauses while clicking or dragging.
+- **White Cursor Ring:** a larger, clear outline with a dark contrast edge; the camera-center dot keeps its minimal size.
 - **Hold Reset:** changing targets or moving more than 10 pixels restarts an unfinished click hold.
 
 </details>

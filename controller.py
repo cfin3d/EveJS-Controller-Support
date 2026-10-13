@@ -106,7 +106,7 @@ def axes(action, pad, settings):
     if not matches(action, pad, settings):
         return 0., 0.
     offset = 1 if 'LEFT_STICK' in settings['bindings'][action] else 3
-    return stick(pad[offset], pad[offset + 1], settings['deadzone'])
+    return stick(pad[offset], pad[offset + 1], settings['deadzone'], 2.7 if action == 'cursor' else 2.)
 
 
 def preferences(document):
@@ -141,13 +141,32 @@ def preferences(document):
     return result
 
 
-def stick(x, y, deadzone):
+def stick(x, y, deadzone, exponent=2.):
     nx, ny = x / (32768.0 if x < 0 else 32767.0), y / (32768.0 if y < 0 else 32767.0)
     length = math.sqrt(nx * nx + ny * ny)
     if length <= deadzone:
         return 0., 0.
-    scale = ((min(1., length) - deadzone) / (1. - deadzone)) ** 2
+    scale = ((min(1., length) - deadzone) / (1. - deadzone)) ** exponent
     return nx / length * scale, ny / length * scale
+
+
+class CursorMotion(object):
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.x, self.y = 0., 0.
+
+    def step(self, x, y, dt):
+        # Ease acceleration globally; releasing a direction stops it immediately.
+        if not x or x * self.x < 0:
+            self.x = 0.
+        if not y or y * self.y < 0:
+            self.y = 0.
+        amount = 1. - math.exp(-dt / .075)
+        self.x += (x - self.x) * amount
+        self.y += (y - self.y) * amount
+        return self.x, self.y
 
 
 class InputMode(object):
@@ -260,7 +279,7 @@ class Magnet(object):
     def reset(self):
         self.target, self.escaped, self.travel, self.engaged = None, None, 0., False
 
-    def step(self, x, y, dx, dy, target, dt, settings, clicking):
+    def step(self, x, y, dx, dy, target, dt, settings, clicking, input_speed=None):
         if target is None:
             self.reset()
             return dx, dy, False
@@ -275,7 +294,8 @@ class Magnet(object):
             return dx, dy, False
         if not distance:
             self.escaped, self.travel = None, 0.
-        if distance / max(.001, dt) > settings['snapMaxSpeed']:
+        speed = distance / max(.001, dt) if input_speed is None else input_speed
+        if speed > settings['snapMaxSpeed']:
             self.engaged = False
             return dx, dy, False
         if identity == self.escaped:
@@ -283,7 +303,7 @@ class Magnet(object):
         cx, cy = tx + width / 2., ty + height / 2.
         outward = dx * (x - cx) + dy * (y - cy) > .01
         self.travel = self.travel + distance if outward else 0.
-        if self.travel > settings['snapRadius'] * .35:
+        if self.travel > min(settings['snapRadius'] * .35, min(width, height) * .25):
             self.escaped = identity
             self.engaged = False
             return dx, dy, False
@@ -512,11 +532,11 @@ class CursorUi(object):
         import carbonui.const as constants
         self.ui, self.helpers, self.visual = ui, helpers, 0.
         self.root = Container(parent=ui.desktop, name='evejsControllerCursor', align=constants.TOPLEFT,
-                              width=70, height=70, state=constants.UI_DISABLED, idx=0)
-        self.lines = [VectorLineTrace(parent=self.root, width=70, height=70, lineWidth=width,
-                                     state=constants.UI_DISABLED) for width in (3., 1.25, 1.5, 2., 1.5, 2., 1.5, 2.)]
-        self.dot = Fill(parent=self.root, align=constants.TOPLEFT, left=34, top=34, width=2, height=2,
-                        state=constants.UI_DISABLED, color=(.84, .90, .95, 1.))
+                              width=84, height=84, state=constants.UI_DISABLED, idx=0)
+        self.lines = [VectorLineTrace(parent=self.root, width=84, height=84, lineWidth=width,
+                                     state=constants.UI_DISABLED) for width in (4.5, 2., 1.5, 2.5, 1.5, 2.5, 1.5, 2.5)]
+        self.dot = Fill(parent=self.root, align=constants.TOPLEFT, left=40.5, top=40.5, width=3, height=3,
+                        state=constants.UI_DISABLED, color=(1., 1., 1., 1.))
         self.mask = helpers['_CursorMask'](ui.uilib, constants)
         self.crosshair = helpers['_CameraCenterDot']()
         self.hide()
@@ -526,7 +546,7 @@ class CursorUi(object):
         count = max(1, int(48 * fill))
         for index in range(count + 1):
             angle = -math.pi / 2. + 2. * math.pi * fill * index / count
-            line.AddPoint((35 + math.cos(angle) * radius, 35 + math.sin(angle) * radius), color=color)
+            line.AddPoint((42 + math.cos(angle) * radius, 42 + math.sin(angle) * radius), color=color)
 
     def update(self, active, ring, snapped, fills, stop, stop_fill, dt):
         self.crosshair.update(self.ui, active)
@@ -535,15 +555,15 @@ class CursorUi(object):
         if not self.root.display:
             return
         self.visual += ((1. if snapped else 0.) - self.visual) * (1. - math.exp(-12. * dt))
-        self.root.left, self.root.top = self.ui.uilib.x - 35, self.ui.uilib.y - 35
-        radius = 9 + 3 * self.visual
+        self.root.left, self.root.top = self.ui.uilib.x - 42, self.ui.uilib.y - 42
+        radius = 13 + 2 * self.visual
         self.arc(self.lines[0], radius, 1., (.07, .10, .14, 1.))
-        self.arc(self.lines[1], radius, 1., (.84 - .37 * self.visual, .90 + .015 * self.visual, .95 + .035 * self.visual, 1.))
-        for index, button, radius, color in ((2, 1, 17., (.39, .85, 1., 1.)), (4, 2, 22., (.93, .73, .42, 1.)), (6, 0, 27., (.96, .56, .35, 1.))):
+        self.arc(self.lines[1], radius, 1., (1., 1., 1., 1.))
+        for index, button, radius, color in ((2, 1, 21., (.39, .85, 1., 1.)), (4, 2, 26., (.93, .73, .42, 1.)), (6, 0, 31., (.96, .56, .35, 1.))):
             enabled, fill = (stop, stop_fill) if button == 0 else (button in fills, fills.get(button, 0.))
             self.lines[index].display = self.lines[index + 1].display = enabled
             if enabled:
-                self.arc(self.lines[index], radius, 1., (.16, .22, .28, 1.))
+                self.arc(self.lines[index], radius, 1., (1., 1., 1., .65))
                 self.arc(self.lines[index + 1], radius, max(.001, fill), color)
 
     def hide(self):
@@ -565,6 +585,7 @@ class Controller(object):
         self.directory, self.ui, self.helpers = directory, ui, helpers
         self.native, self.overlay = native or WindowsInput(), overlay or CursorUi(ui, helpers)
         self.mode, self.gestures, self.magnet = InputMode(), Gestures(), Magnet()
+        self.motion = CursorMotion()
         self.active, self.settings, self.last_settings, self.last_tick = True, preferences({}), -1., time.time()
         self.cookie, self.constants = None, None
         self.remainder_x, self.remainder_y = 0., 0.
@@ -598,6 +619,7 @@ class Controller(object):
         finally:
             self.gestures.reset()
             self.magnet.reset()
+            self.motion.reset()
             self.remainder_x, self.remainder_y = 0., 0.
             self.overlay.hide()
 
@@ -644,6 +666,8 @@ class Controller(object):
             return
         x, y = self.native.position()
         dx, dy = axes('cursor', pad, self.settings)
+        requested_speed = math.hypot(dx, dy) * self.settings['cursorSpeed']
+        dx, dy = self.motion.step(dx, dy, dt)
         dx, dy = dx * self.settings['cursorSpeed'] * dt, -dy * self.settings['cursorSpeed'] * dt
         hover = self.helpers['_ec_hover_target'](self.ui)
         snap_target = hover
@@ -653,7 +677,7 @@ class Controller(object):
         if snap_target is not None:
             left, top, width, height = self.native.bounds()
             target = (snap_target['id'], left + snap_target['x'] * width, top + snap_target['y'] * height, snap_target['w'] * width, snap_target['h'] * height)
-        dx, dy, snapped = self.magnet.step(x, y, dx, dy, target, dt, self.settings, matches('leftClick', pad, self.settings) or matches('rightClick', pad, self.settings))
+        dx, dy, snapped = self.magnet.step(x, y, dx, dy, target, dt, self.settings, matches('leftClick', pad, self.settings) or matches('rightClick', pad, self.settings), requested_speed)
         dx, dy = dx + self.remainder_x, dy + self.remainder_y
         step_x, step_y = int(dx), int(dy)
         self.remainder_x, self.remainder_y = dx - step_x, dy - step_y

@@ -32,6 +32,9 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 
 ### Changed
 
+- Enlarge the controller cursor's main ring from an 18 px to a 26 px diameter, with a thicker solid white outline, a dark contrast edge, a larger white center dot, and brighter outer hold tracks.
+- Apply a finer 2.7-power cursor response and a short acceleration ramp everywhere. Preserve full-stick maximum speed, immediate stopping on direction release, prompt direction reversal, and the existing camera response.
+- Reduce attraction escape distance for short controls so fine movement can move between neighboring menu/list items more easily. Full-stick intent escapes attraction immediately, including while cursor speed ramps up.
 - Update the repository logo to **EVEJS OFFLINE**: preserve the EVE mark, add small subtitle-style **JS** aligned to the second E's bottom edge, and center **OFFLINE** beneath EVE with the original subtitle gap and letter spacing.
 - Refer to the configuration path as **Settings → Controller** throughout the user guide.
 - Simplify the README with a compact usage/control guide, expandable details, and consistent title case for headings and labels.
@@ -45,6 +48,8 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 
 ### Fixed
 
+- Recognize native right-click menu rows that activate through mouse-up handlers, including submenu entries; exclude disabled or non-interactive rows.
+- Keep attraction inside open menu layers and invalidate nearby-target geometry when menus open, close or rebuild, preventing attraction to controls behind the menu.
 - Enable controller camera panning and zoom in station and structure hangars, using the client's active camera while keeping ship commands restricted to space.
 - Classify mouse input from tagged Windows mouse messages before EVE defers UI events. Controller-generated mouse movement/drag notifications no longer trigger mouse/keyboard takeover or release confirmed held clicks.
 - Keep physical mouse/keyboard takeover responsive, preserve physically held mouse buttons, and remove the native mouse observer when the mod stops.

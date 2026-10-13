@@ -16,6 +16,13 @@ def _ec_hover_target(uicore):
     return _ec_target_bounds(uicore, getattr(getattr(uicore, 'uilib', None), 'mouseOver', None))
 
 
+def _ec_active_menus(uicore):
+    layers = getattr(uicore, 'layer', None)
+    menus = [getattr(layers, name, None) for name in ('menu', 'utilmenu')]
+    return [menu for menu in menus if menu is not None and getattr(menu, 'display', False) and
+            any(getattr(child, 'display', False) and not getattr(child, 'destroyed', False) for child in getattr(menu, 'children', []))]
+
+
 def _ec_target_bounds(uicore, node):
     desktop = getattr(uicore, 'desktop', None)
     uilib = getattr(uicore, 'uilib', None)
@@ -34,6 +41,10 @@ def _ec_target_bounds(uicore, node):
         modal = uicore.registry.GetModalWindow()
         if modal is not None and modal not in chain:
             return None
+        # Keep attraction inside open menu layers, including their submenus.
+        menus = _ec_active_menus(uicore)
+        if menus and not any(menu in chain for menu in menus):
+            return None
         # Native mouseOver supplies EVE's hit-test result, respecting occlusion.
         # Take the nearest enabled clickable ancestor, never a nearby guessed box.
         for candidate in chain:
@@ -43,8 +54,15 @@ def _ec_target_bounds(uicore, node):
             if any(part in kind for part in ('edit', 'slider', 'scrollbar', 'resize')):
                 return None
             has_handler = getattr(candidate, 'HasEventHandler', None)
-            if not callable(has_handler) or not has_handler('OnClick'):
+            entry = getattr(candidate, 'menuEntryData', None)
+            # Native context-menu rows execute on mouse-up rather than OnClick.
+            if not callable(has_handler) or not (has_handler('OnClick') or entry is not None and has_handler('OnMouseUp')):
                 continue
+            if entry is not None:
+                enabled = getattr(entry, 'IsEnabled', None)
+                interactable = getattr(candidate, 'IsInteractable', None)
+                if callable(enabled) and not enabled() or callable(interactable) and not interactable():
+                    continue
             if getattr(candidate, 'state', 0) in (1, 2):
                 continue
             is_enabled = getattr(candidate, 'IsEnabled', None)
@@ -71,7 +89,7 @@ def _ec_snap_target(uicore, radius):
     try:
         px, py = uicore.ScaleDpi(uicore.uilib.x), uicore.ScaleDpi(uicore.uilib.y)
         now = _ec_time.time()
-        modal_id = id(uicore.registry.GetModalWindow())
+        modal_id = (id(uicore.registry.GetModalWindow()), tuple((id(menu), tuple(id(child) for child in menu.children if getattr(child, 'display', False) and not getattr(child, 'destroyed', False))) for menu in _ec_active_menus(uicore)))
         if _ec_snap_cache and _ec_snap_cache[4] == modal_id and now - _ec_snap_cache[0] < .08 and _ec_math.hypot(px - _ec_snap_cache[1], py - _ec_snap_cache[2]) < radius * .5:
             return _ec_snap_cache[3]
         best, best_distance = None, None

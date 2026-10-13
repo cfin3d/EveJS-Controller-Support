@@ -110,7 +110,8 @@
         "group": "Controller Feel",
         "minimum": 100,
         "maximum": 4000,
-        "step": 50
+        "step": 50,
+        "description": "Finer small-stick movement and smooth acceleration apply everywhere. Full deflection reaches this speed; releasing a direction stops its movement immediately."
       },
       {
         "id": "cameraSpeed",
@@ -151,7 +152,7 @@
         ],
         "restart": "none",
         "group": "Controller Feel",
-        "description": "Pulls toward the center of a nearby hovered EVE control while moving the cursor slowly. Strong stick movement escapes it. Does not snap in empty space or during drags."
+        "description": "Pulls toward nearby native UI controls and enabled context-menu items while moving slowly. Strong or sustained outward movement escapes it. Attraction pauses while clicking or dragging."
       },
       {
         "id": "snapRadius",

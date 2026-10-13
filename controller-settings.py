@@ -7,6 +7,8 @@ import sys
 import time
 
 PANEL_ID = 'evejs-controller'
+BINDING_BUTTON_WIDTH = 274
+BINDING_BUTTON_HEIGHT = 40
 BUTTON_ICONS = dict(A='a', B='b', X='x', Y='y', LB='lb', RB='rb', LT='lt', RT='rt',
                     LS='left-stick', RS='right-stick', LEFT_STICK='left-stick', RIGHT_STICK='right-stick',
                     LEFT_STICK_Y='left-stick', RIGHT_STICK_Y='right-stick',
@@ -114,13 +116,28 @@ class ControllerSettings(object):
         from eve.client.script.ui.control.eveLabel import EveLabelSmall
         from eve.client.script.ui.shared.systemMenu.systemMenuHeader import SystemMenuHeader
         import carbonui.const as const
+        class SizedButton(Button):
+            # Current native Button recomputes intrinsic dimensions and ignores
+            # legacy fixedwidth/fixedheight. Keep normal styling and behavior,
+            # but reserve the full frame for our composite icon contents.
+            def __init__(self, *args, **kwargs):
+                self.controller_width = kwargs.get('width', 120)
+                self.controller_height = kwargs.get('height', 36)
+                Button.__init__(self, *args, **kwargs)
+
+            def get_intrinsic_width(self):
+                return self.controller_width
+
+            def get_intrinsic_height(self):
+                return self.controller_height
+
         self.controller, self.api, self.cls, self.const = controller, api, SystemMenu, const
         self.native_selection, self.fallback = system_menu_selected_tab_setting, PANELID_CAMERA
         self.icon = prepare_icon(controller.directory)
         self.button_icons = prepare_button_icons(controller.directory)
         self.Sprite = Sprite
         self.Scroll, self.Combo, self.Checkbox, self.Slider = ScrollContainer, Combo, Checkbox, Slider
-        self.Button, self.Edit, self.Container, self.Label, self.Header = Button, SingleLineEditText, Container, EveLabelSmall, SystemMenuHeader
+        self.Button, self.Edit, self.Container, self.Label, self.Header = SizedButton, SingleLineEditText, Container, EveLabelSmall, SystemMenuHeader
         self.panels, self.widgets, self.connected, self.previous = [], {}, {}, {}
         self.callbacks = {}
         self.capture, self.identifying, self.ready, self.collected = None, False, False, set()
@@ -214,9 +231,10 @@ class ControllerSettings(object):
 
     def button(self, parent, label, func, **kwargs):
         width = kwargs.pop('width', max(64, min(184, len(label) * 7 + 24)))
+        height = kwargs.pop('height', 36)
         cell = self.Container(parent=parent, align=self.const.TORIGHT, width=width+6)
         return self.Button(parent=cell, label=label, func=func, align=self.const.CENTER,
-                           width=width, fixedwidth=width, height=36, fixedheight=36, **kwargs)
+                           width=width, height=height, **kwargs)
 
     def choose_controller(self, combo, label, value):
         self.abort()
@@ -292,20 +310,19 @@ class ControllerSettings(object):
         return lambda *args: self.begin_capture(action)
 
     def binding_row(self, panel, title, value, capture, clear, widget_key, clear_label='Clear'):
-        row = self.row(panel, 40)
+        row = self.row(panel, 48)
         label_cell = self.Container(parent=row, align=self.const.TOLEFT_PROP, width=.43, padRight=12)
         self.Label(parent=label_cell, align=self.const.TOTOP, padTop=4, maxLines=2, text=title, state=self.const.UI_DISABLED)
         inputs = self.Container(parent=row, align=self.const.TOALL)
-        self.button(inputs, clear_label, clear, width=56 if clear_label=='Clear' else 68)
+        self.button(inputs, clear_label, clear, width=56 if clear_label=='Clear' else 68,height=BINDING_BUTTON_HEIGHT)
         self.widgets[widget_key] = self.input_button(inputs, value, capture)
 
     def input_button(self, parent, value, callback, empty='Disabled'):
         tokens = value.split('+') if value else []
-        icon_size = 26 if len(tokens)==4 else 30
+        icon_size = 30
         width = len(tokens) * icon_size + max(0,len(tokens)-1) * 16 + (58 if tokens and tokens[-1].endswith('_Y') else 0)
-        button_width = max(120 if value or empty=='Disabled' else 160,min(224,width+24))
-        control = self.Button(parent=parent, align=self.const.CENTERLEFT, width=button_width, height=36,
-                              fixedwidth=button_width, fixedheight=36, label='' if value else empty,
+        control = self.Button(parent=parent, align=self.const.CENTERLEFT, width=BINDING_BUTTON_WIDTH, height=BINDING_BUTTON_HEIGHT,
+                              label='' if value else empty,
                               hint=display_binding(value) if value else empty, func=callback)
         if not value:
             return control
@@ -366,8 +383,8 @@ class ControllerSettings(object):
         self.widgets['custom_modifier']=self.Combo(parent=left,align=self.const.TOTOP,options=[(title,value) for title,value,codes in self.api['SHORTCUT_MODIFIERS']],select=draft['modifier'],callback=self.custom_modifier)
         self.widgets['custom_key']=self.Combo(parent=right,align=self.const.TOTOP,options=[(key,key) for key,code in self.api['SHORTCUT_KEYS']],select=draft['key'],callback=self.custom_key)
         self.widgets['custom_action']=self.Label(parent=panel,align=self.const.TOTOP,text='',padTop=4,padBottom=12)
-        row=self.row(panel,40)
-        self.button(row,'Save Binding' if draft['id'] else 'Add Binding',self.add_custom,width=112)
+        row=self.row(panel,48)
+        self.button(row,'Save Binding' if draft['id'] else 'Add Binding',self.add_custom,width=112,height=BINDING_BUTTON_HEIGHT)
         self.widgets['custom_input']=self.input_button(row,draft['controller'],self.capture_callback('custom:draft'),'Choose Input')
         if draft['id']:
             self.button(self.row(panel),'Cancel Editing',self.reset_custom,width=128)

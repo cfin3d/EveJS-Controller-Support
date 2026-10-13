@@ -60,6 +60,7 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 
 ### Fixed
 
+- Preserve button frame dimensions through the current client's intrinsic sizing API, which ignores legacy fixed-width/fixed-height attributes. Use uniform 274 × 40 binding buttons with centered icon groups, consistent icon spacing, and at least 24 px padding on each side of the longest supported combination; apply the same sizing to custom and empty binding inputs.
 - Use the client's registered `radialmenu` service when installing controller radial handling. The incorrect service lookup disabled controller radial activation and allowed the ordinary mouse radial to open, bypassing the bounded left-stick cursor and exclusive menu controls.
 - Fix native binding buttons rendering as thin strips by replacing fill alignment with explicit centered dimensions. Keep input, Clear/Remove, and editor buttons compact with consistent height.
 - Compare existing bindings again before saving an accepted replacement; reject concurrent edits instead of silently overwriting them. Preserve unrelated launcher preferences through atomic saves.

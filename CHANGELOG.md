@@ -6,7 +6,7 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 
 ### Added
 
-- Native **Controller** category in EVE's Esc settings menu, with a matching white controller icon and native navigation, labels, buttons, sliders, toggles, and scrolling.
+- Native **Controller** category in EVE's Settings menu, with a matching white controller icon and native navigation, labels, buttons, sliders, toggles, and scrolling.
 - Connected-controller selection, live activity detection, and **Identify Controller**, with selection saved across sessions.
 - Action-based binding capture for cursor movement, camera pan/zoom, left/right click, camera-center flight, and stop, including button combinations and stick modifiers.
 - Binding conflict detection, clear bindings, named configuration profiles, and **Restore Defaults** while retaining selected hardware and saved profiles.
@@ -32,6 +32,7 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 
 ### Changed
 
+- Refer to the configuration path as **Settings → Controller** throughout the user guide.
 - Simplify the README with a compact usage/control guide, expandable details, and consistent title case for headings and labels.
 - Remove the neutral-input instruction from the installation guide and omit unassigned controls from the displayed mappings.
 - Move controller polling, cursor rendering and navigation into the EVE process.

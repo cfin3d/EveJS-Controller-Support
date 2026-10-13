@@ -126,7 +126,7 @@ These are the default bindings. Release a bumper early to cancel its click. A lo
 
 ## Configuration
 
-In EVE, open **Esc → Controller**. Changes save and apply automatically.
+In EVE, open **Settings → Controller**. Changes save and apply automatically.
 
 | Option | Use |
 | :--- | :--- |
@@ -171,7 +171,7 @@ Join the [EveJS Discord](https://discord.gg/qxgMmtGmb7) or [report an issue](htt
 | :--- | :--- |
 | **Mod Missing** | Check the folder layout above, then refresh Mods. |
 | **Input Inactive** | Enable the mod, restart when requested, log in through the launcher, and focus EVE. |
-| **Wrong Controller** | Open **Esc → Controller → Identify Controller**, then use the desired device. |
+| **Wrong Controller** | Open **Settings → Controller → Identify Controller**, then use the desired device. |
 | **Native Pointer Returns** | Mouse/keyboard activity changes modes. Use controller input to switch back. |
 | **Flight/Stop Unavailable** | Undock and wait for the character/session to be ready. |
 

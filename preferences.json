@@ -22,5 +22,6 @@
     "fly": "RS",
     "stop": "RS"
   },
+  "customBindings": [],
   "profiles": {}
 }

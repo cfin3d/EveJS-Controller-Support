@@ -6,6 +6,9 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 
 ### Added
 
+- Custom controller-to-EVE-shortcut bindings in the native Controller settings category, with modifier/key drop-downs, a resolved action preview, controller combination capture, editing/removal, and saved-profile support. No custom bindings are assigned by default.
+- Native EVE warning dialogs for controller binding conflicts, listing affected functions with **Replace Binding** and **Cancel**, defaulting to cancellation. Accepted replacements clear conflicting core inputs or remove conflicting custom entries; canceled replacements leave preferences unchanged.
+- Single-press custom shortcut dispatch through the native command map, preserving command availability checks, requiring a configured EVE shortcut, pinning its action identity, and cleaning up native combat command selection after dispatch to the selected object.
 - Target-aware controller radial menu: the existing left-click binding (RB by default) fills its confirmation ring for 500 ms, then opens EVE's native wheel over a valid targetable space bracket, overview entry, or locked-target icon.
 - Exclusive radial navigation with left-stick wedge selection, angular hysteresis, deliberate More/submenu expansion, D-pad range adjustment with bounded repeat, release-to-confirm, and B cancellation. Native icons, action labels, disabled states, range feedback, and closing animations are retained.
 - Minimal white controller prompts beneath the wheel; activation prompts follow the existing left-click binding and cancellation chooses a free button if that binding includes B. Add matching white B and D-pad SVG icons to the user guide.
@@ -36,6 +39,8 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 
 ### Changed
 
+- Reformat Controller settings into spaced sections, paired half-width slider fields with separate value labels, and uniform action/input/clear columns. Apply matching rows to custom bindings and keep modifier/key selection in a compact two-column editor.
+- Include custom bindings in profiles and Restore Defaults while retaining existing device selection and saved profiles.
 - Share the left-click binding and confirmation timer with target radial activation. Preserve normal UI hold-to-click/drag, existing preferences, and ordinary native mouse radial behavior.
 - Enlarge the controller cursor's main ring from an 18 px to a 26 px diameter, with a thicker solid white outline, a dark contrast edge, a larger white center dot, and brighter outer hold tracks.
 - Apply a finer 2.7-power cursor response and a short acceleration ramp everywhere. Preserve full-stick maximum speed, immediate stopping on direction release, prompt direction reversal, and the existing camera response.
@@ -53,6 +58,8 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 
 ### Fixed
 
+- Compare existing bindings again before saving an accepted replacement; reject concurrent edits instead of silently overwriting them. Preserve unrelated launcher preferences through atomic saves.
+- Suppress custom actions during Settings, capture, radial navigation, and input handover; cancel queued actions on focus/input/session/configuration changes and prevent held combinations from replaying after takeover.
 - Resolve radial targets only from the current native pick and recognized in-space target surfaces, with live ballpark, session, visibility, own-ship, and native non-targetable-group checks. Never fall back to a previously selected target or an object behind a window.
 - Suppress ordinary mouse-driven radial expansion for controller-owned UI clicks, without suppressing physical mouse input; restore the scoped service hook when the mod stops.
 - Keep chosen radial ranges across native option refreshes and final confirmation. Revalidate action availability, label, and target before dispatch, and guard deferred native callbacks against cancellation or target/session loss.

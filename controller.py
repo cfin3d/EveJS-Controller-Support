@@ -8,6 +8,10 @@ try:
     import __builtin__ as _builtins
 except ImportError:
     import builtins as _builtins
+try:
+    TEXT_TYPES = (str, unicode)
+except NameError:
+    TEXT_TYPES = (str,)
 
 TAG = 0x45564354
 LB, RB, RS = 0x100, 0x200, 0x80
@@ -25,7 +29,48 @@ DEFAULTS = dict(schemaVersion=1, controllerIndex=-1, deadzone=.20, cursorSpeed=1
                 cameraSpeed=800, cursorRing=True, cursorSnap=True, snapRadius=28,
                 snapMaxSpeed=250, clickHoldMilliseconds=500, rightStickStopMilliseconds=1000,
                 invertCameraPan=False, cameraZoomSpeed=.8, triggerThreshold=40,
-                bindings=DEFAULT_BINDINGS, profiles={})
+                bindings=DEFAULT_BINDINGS, customBindings=[], profiles={})
+SHORTCUT_KEYS = [(chr(code), code) for code in range(65, 91)] + [(str(i), 48+i) for i in range(10)] + [('F%d' % i, 111+i) for i in range(1,25)] + [('Space',32),('Tab',9),('Enter',13),('Escape',27),('Backspace',8),('Insert',45),('Delete',46),('Home',36),('End',35),('Page Up',33),('Page Down',34),('Up',38),('Down',40),('Left',37),('Right',39)]
+SHORTCUT_MODIFIERS = [('None','NONE',()),('Ctrl','CTRL',(17,)),('Alt','ALT',(18,)),('Shift','SHIFT',(16,)),
+                     ('Ctrl + Alt','CTRL+ALT',(17,18)),('Ctrl + Shift','CTRL+SHIFT',(17,16)),
+                     ('Alt + Shift','ALT+SHIFT',(18,16)),('Ctrl + Alt + Shift','CTRL+ALT+SHIFT',(17,18,16))]
+
+
+def binding_overlap(first, second):
+    if not first or not second:
+        return False
+    a, b = set(first.replace('_Y','').split('+')), set(second.replace('_Y','').split('+'))
+    return a <= b or b <= a
+
+
+def custom_bindings(document, builtins):
+    if not isinstance(document, list) or len(document) > 32:
+        raise ValueError('Use At Most 32 Custom Bindings')
+    result, used = [], set()
+    for source in document:
+        if not isinstance(source, dict) or set(source) != set(('id','modifier','key','controller','command')):
+            raise ValueError('Invalid Custom Binding')
+        item = dict(source)
+        if any(not isinstance(value,TEXT_TYPES) for value in item.values()):
+            raise ValueError('Invalid Custom Binding')
+        identity = item['id']
+        if not isinstance(identity, type('')):
+            try:
+                if not isinstance(identity, unicode): raise ValueError('Invalid Custom Binding ID')
+            except NameError: raise ValueError('Invalid Custom Binding ID')
+        if not identity.startswith('custom-') or not identity[7:].isdigit() or len(identity)>18 or identity in used:
+            raise ValueError('Invalid Custom Binding ID')
+        used.add(identity)
+        if item['modifier'] not in [value for title,value,codes in SHORTCUT_MODIFIERS] or item['key'] not in dict(SHORTCUT_KEYS):
+            raise ValueError('Invalid Keyboard Shortcut')
+        name = item['command']
+        if not name or len(name)>100 or not all(c in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_' for c in name):
+            raise ValueError('Invalid EVE Command')
+        item['controller'] = binding(item['controller'], 'custom')
+        if any(binding_overlap(item['controller'], value) for value in builtins.values()) or any(binding_overlap(item['controller'], old['controller']) for old in result):
+            raise ValueError('Custom Binding Conflicts With An Existing Function')
+        result.append(item)
+    return result
 
 
 def binding(value, action):
@@ -130,6 +175,7 @@ def preferences(document):
         if not isinstance(result[name], bool):
             raise ValueError('Invalid ' + name)
     result['bindings'] = validate_bindings(document.get('bindings', {}))
+    result['customBindings'] = custom_bindings(document.get('customBindings', []), result['bindings'])
     profiles = document.get('profiles', {})
     if not isinstance(profiles, dict) or len(profiles) > 20:
         raise ValueError('Invalid Profiles')
@@ -650,6 +696,7 @@ class Controller(object):
         self.radial, self.radial_hold, self.radial_restore = None, None, None
         self.radial_gate, self.left_previous = False, False
         self.radial_available = '_ec_radial_open' in helpers
+        self.custom_down, self.custom_epoch = set(), 0
         try:
             self.menu = settings_api['install'](self, globals()) if settings_api else None
         except Exception:
@@ -682,6 +729,9 @@ class Controller(object):
 
     def cancel(self):
         try:
+            self.custom_epoch += 1
+            pad = self.mode.previous
+            self.custom_down = self.custom_pressed(pad) if pad else set()
             if self.radial or self.radial_hold:
                 self.radial_gate = True
             try:
@@ -698,6 +748,31 @@ class Controller(object):
             self.remainder_x, self.remainder_y = 0., 0.
             self.overlay.hide()
 
+    def custom_pressed(self, pad):
+        mask = input_mask(pad, self.settings)
+        return set(item['id'] for item in self.settings['customBindings'] if item['controller'] and mask & binding_mask(item['controller']) == binding_mask(item['controller']))
+
+    def custom_tick(self, pad, settings_open):
+        down = self.custom_pressed(pad)
+        rising, self.custom_down = down - self.custom_down, down
+        if settings_open or not rising or '_ec_custom_execute' not in self.helpers:
+            return
+        import uthread
+        epoch = self.custom_epoch
+        identity = tuple(getattr(getattr(_builtins,'session',None),key,None) for key in ('charid','shipid','solarsystemid','stationid','structureid'))
+        for item in self.settings['customBindings']:
+            if item['id'] not in rising:
+                continue
+            def execute(binding=dict(item)):
+                current = tuple(getattr(getattr(_builtins,'session',None),key,None) for key in ('charid','shipid','solarsystemid','stationid','structureid'))
+                if not self.active or epoch != self.custom_epoch or identity != current or self.mode.mode != 'controller' or not self.native.foreground() or self.radial or self.radial_gate:
+                    return
+                try:
+                    self.helpers['_ec_custom_execute'](self.ui, binding)
+                except Exception as error:
+                    print('EVEJS_CONTROLLER:Custom shortcut unavailable: ' + type(error).__name__)
+            uthread.new(execute)
+
     def radial_tick(self, pad, x, y, now, settings_open):
         pressed = matches('leftClick', pad, self.settings)
         rising = pressed and not self.left_previous
@@ -706,6 +781,7 @@ class Controller(object):
             neutral = input_mask(pad, self.settings) == 0 and stick(pad[1], pad[2], self.settings['deadzone']) == (0., 0.) and stick(pad[3], pad[4], self.settings['deadzone']) == (0., 0.)
             if neutral:
                 self.radial_gate, self.left_previous = False, False
+                self.custom_down = set()
             self.native.release()
             self.overlay.update(True, self.settings['cursorRing'], False, {}, False, 0., .016)
             return True, None
@@ -749,6 +825,8 @@ class Controller(object):
                 return True, None
             progress = min(1., max(0., (now - started) * 1000. / self.settings['clickHoldMilliseconds']))
             if progress >= 1.:
+                self.custom_epoch += 1
+                self.custom_down = self.custom_pressed(pad)
                 self.native.release()
                 self.gestures.reset()
                 self.magnet.reset()
@@ -813,6 +891,7 @@ class Controller(object):
         exclusive, radial_progress = self.radial_tick(pad, x, y, now, settings_open)
         if exclusive:
             return
+        self.custom_tick(pad, settings_open)
         dx, dy = axes('cursor', pad, self.settings)
         requested_speed = math.hypot(dx, dy) * self.settings['cursorSpeed']
         dx, dy = self.motion.step(dx, dy, dt)

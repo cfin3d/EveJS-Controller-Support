@@ -1,4 +1,5 @@
 # Native System Menu integration for EVE client build 3396210.
+# -*- coding: utf-8 -*-
 import ctypes
 import json
 import os
@@ -6,7 +7,7 @@ import sys
 import time
 
 PANEL_ID = 'evejs-controller'
-PROFILE_KEYS = ('bindings', 'deadzone', 'cursorSpeed', 'cameraSpeed', 'cameraZoomSpeed',
+PROFILE_KEYS = ('bindings', 'customBindings', 'deadzone', 'cursorSpeed', 'cameraSpeed', 'cameraZoomSpeed',
                 'invertCameraPan', 'cursorRing', 'cursorSnap', 'snapRadius', 'snapMaxSpeed',
                 'clickHoldMilliseconds', 'rightStickStopMilliseconds', 'triggerThreshold')
 
@@ -27,13 +28,17 @@ def prepare_icon(directory):
     return resource
 
 
-def write_preferences(directory, patch, validate):
+def write_preferences(directory, patch, validate, expected=None):
     path = os.path.join(directory, 'preferences.json')
     with open(path, 'rb') as stream:
         content = stream.read(65537)
     if len(content) > 65536:
         raise ValueError('Configuration Is Too Large')
     document = json.loads(content)
+    if expected is not None:
+        current = validate(document)
+        if any(current[key] != value for key,value in expected.items()):
+            raise ValueError('Bindings Changed; Try Again')
     document.update(patch)
     result = validate(document)
     data = (json.dumps(document, indent=2, sort_keys=True) + '\n').encode('utf-8')
@@ -95,6 +100,8 @@ class ControllerSettings(object):
         self.capture, self.identifying, self.ready, self.collected = None, False, False, set()
         self.deadline, self.last_scan, self.message_until = 0., -1., 0.
         self.selected_profile, self.closed, self.rendered_settings = None, False, None
+        self.custom_draft = dict(id=None, modifier='NONE', key='F1', controller='')
+        self.confirming = False
         self.original_tree, self.original_load = SystemMenu.__dict__['ConstructTreeData'], SystemMenu.__dict__['LoadPanel']
         manager = self
 
@@ -144,9 +151,9 @@ class ControllerSettings(object):
         if status is not None and not getattr(status, 'destroyed', False):
             status.text = text
 
-    def save(self, patch, rebuild=False):
+    def save(self, patch, rebuild=False, expected=None):
         try:
-            result = write_preferences(self.controller.directory, patch, self.api['preferences'])
+            result = write_preferences(self.controller.directory, patch, self.api['preferences'], expected)
             self.controller.cancel()
             self.controller.mode.reset()
             self.controller.settings = result
@@ -170,7 +177,14 @@ class ControllerSettings(object):
                 self.build(panel)
 
     def row(self, parent, height=36):
-        return self.Container(parent=parent, align=self.const.TOTOP, height=height, padBottom=4)
+        return self.Container(parent=parent, align=self.const.TOTOP, height=height, padBottom=8)
+
+    def pair(self, panel, fields):
+        row = self.row(panel, 54)
+        cells = [self.Container(parent=row, align=self.const.TOLEFT_PROP, width=.5, padRight=12),
+                 self.Container(parent=row, align=self.const.TOALL, padLeft=12)]
+        for cell, field in zip(cells, fields):
+            self.slider(cell, *field)
 
     def button(self, parent, label, func, **kwargs):
         return self.Button(parent=parent, label=label, func=func, align=self.const.TORIGHT, padLeft=6, **kwargs)
@@ -190,36 +204,41 @@ class ControllerSettings(object):
         self.widgets = {}
         self.callbacks = {}
         self.rendered_settings = settings
-        self.Header(parent=panel, text='Controller', padTop=0)
+        self.Header(parent=panel, text='Input Device', padTop=0)
         row = self.row(panel)
         self.widgets['selector'] = self.Combo(parent=row, align=self.const.TOLEFT, width=230, options=self.controller_options(), select=settings['controllerIndex'], callback=self.choose_controller)
         self.button(row, 'Identify Controller', self.identify)
         self.widgets['status'] = self.Label(parent=panel, align=self.const.TOTOP, text='Use A Controller Input To Identify Activity', padBottom=10)
         self.widgets['cancel'] = self.Button(parent=panel, align=self.const.TOTOP, label='Cancel Input Detection', func=self.abort, display=bool(self.capture or self.identifying), padBottom=8)
         self.Header(parent=panel, text='Camera', padTop=12)
+        self.pair(panel, [('cameraSpeed','Pan Speed',100,4000,50),('cameraZoomSpeed','Zoom Speed',.1,3.,.1)])
         self.check(panel, 'invertCameraPan', 'Invert Camera Pan', 'Reverse Vertical Panning; Cursor Movement And Zoom Keep Their Direction')
-        self.slider(panel, 'cameraSpeed', 'Pan Speed', 100, 4000, 50)
-        self.slider(panel, 'cameraZoomSpeed', 'Zoom Speed', .1, 3., .1)
         self.Header(parent=panel, text='Cursor', padTop=12)
-        self.slider(panel, 'deadzone', 'Stick Deadzone', .05, .5, .01)
-        self.slider(panel, 'cursorSpeed', 'Cursor Speed (px/s)', 100, 4000, 50)
+        self.pair(panel, [('deadzone','Stick Deadzone',.05,.5,.01),('cursorSpeed','Cursor Speed (px/s)',100,4000,50)])
         self.check(panel, 'cursorRing', 'Circular Cursor')
         self.check(panel, 'cursorSnap', 'UI Attraction')
-        self.slider(panel, 'snapRadius', 'Attraction Radius (px)', 8, 64, 1)
-        self.slider(panel, 'snapMaxSpeed', 'Attraction Speed Limit (px/s)', 50, 600, 10)
+        self.pair(panel, [('snapRadius','Attraction Radius (px)',8,64,1),('snapMaxSpeed','Attraction Speed Limit (px/s)',50,600,10)])
         self.Header(parent=panel, text='Hold Timing', padTop=12)
-        self.slider(panel, 'clickHoldMilliseconds', 'Click / Radial Hold (ms)', 200, 2000, 50)
-        self.slider(panel, 'rightStickStopMilliseconds', 'Stop Hold (ms)', 500, 3000, 100)
-        self.slider(panel, 'triggerThreshold', 'Trigger Activation', 10, 240, 5)
+        self.pair(panel, [('clickHoldMilliseconds','Click / Radial Hold (ms)',200,2000,50),('rightStickStopMilliseconds','Stop Hold (ms)',500,3000,100)])
+        self.pair(panel, [('triggerThreshold','Trigger Activation',10,240,5)])
         self.Header(parent=panel, text='Bindings', padTop=12)
-        self.Label(parent=panel, align=self.const.TOTOP, text='Select A Binding, Release Controls, Then Press Buttons Or Move A Stick. Hold Modifiers To Record A Combination.', padBottom=8)
+        self.Label(parent=panel, align=self.const.TOTOP, text='Select An Input To Rebind. Hold Modifiers While Entering A Combination.', padBottom=12)
+        headings=self.row(panel,20)
+        action_heading=self.Container(parent=headings,align=self.const.TOLEFT_PROP,width=.43,padRight=12)
+        self.Label(parent=action_heading,align=self.const.TOTOP,text='<b>Action</b>')
+        self.Label(parent=headings,align=self.const.TOALL,text='<b>Controller Input</b>')
         for action, title in self.api['ACTIONS']:
-            row = self.row(panel, 50)
-            self.Label(parent=row, align=self.const.TOPLEFT, text=title + (' (Tap)' if action == 'fly' else ' (Hold)' if action == 'stop' else ''), state=self.const.UI_DISABLED)
-            self.button(row, 'Clear', self.clear_callback(action), width=55)
-            control = self.Button(parent=row, align=self.const.BOTTOMLEFT, label=display_binding(settings['bindings'][action]), func=self.capture_callback(action))
-            self.widgets['binding:' + action] = control
+            self.binding_row(panel, title + (' (Tap)' if action == 'fly' else ' (Hold)' if action == 'stop' else ''),
+                             settings['bindings'][action], self.capture_callback(action), self.clear_callback(action), 'binding:'+action)
         self.Label(parent=panel, align=self.const.TOTOP, text='Rear Buttons Can Be Bound When Exposed As Independent Inputs. The Current Input Backend Exposes Standard Controller Buttons And Triggers.', padBottom=8)
+        self.Header(parent=panel, text='Custom Bindings', padTop=12)
+        for item in settings['customBindings']:
+            try:command=self.resolve_custom(item)
+            except Exception:command=None
+            title=command.GetDescription() if command and command.name==item['command'] else item['command']
+            self.binding_row(panel,title+' ('+self.shortcut_title(item)+')',item['controller'],self.edit_custom_callback(item),
+                             self.remove_custom_callback(item['id']),'custom:'+item['id'],'Remove')
+        self.build_custom_editor(panel)
         self.Header(parent=panel, text='Profiles', padTop=12)
         row = self.row(panel)
         profiles = sorted(settings['profiles'])
@@ -240,14 +259,25 @@ class ControllerSettings(object):
     def capture_callback(self, action):
         return lambda *args: self.begin_capture(action)
 
+    def binding_row(self, panel, title, value, capture, clear, widget_key, clear_label='Clear'):
+        row = self.row(panel, 40)
+        label_cell = self.Container(parent=row, align=self.const.TOLEFT_PROP, width=.43, padRight=12)
+        self.Label(parent=label_cell, align=self.const.TOTOP, padTop=4, maxLines=2, text=title, state=self.const.UI_DISABLED)
+        inputs = self.Container(parent=row, align=self.const.TOALL)
+        self.button(inputs, clear_label, clear, width=56 if clear_label=='Clear' else 68)
+        self.widgets[widget_key] = self.Button(parent=inputs, align=self.const.TOALL, padRight=12,
+                                               label=display_binding(value), hint=display_binding(value), func=capture)
+
     def check(self, panel, key, title, hint=''):
         self.widgets[key] = self.Checkbox(parent=panel, align=self.const.TOTOP, text=title, checked=self.controller.settings[key], hint=hint,
                                          callback=lambda control: self.save({key: bool(control.GetValue())}), padBottom=6)
 
     def slider(self, panel, key, title, low, high, step):
-        row = self.row(panel, 44)
+        row = self.row(panel, 50)
         value = self.controller.settings[key]
-        label = self.Label(parent=row, align=self.const.TOPLEFT, text=title + ': ' + str(value), state=self.const.UI_DISABLED)
+        self.Label(parent=row, align=self.const.TOPLEFT, text=title, state=self.const.UI_DISABLED)
+        track = self.Container(parent=row, align=self.const.TOTOP, height=24, padTop=22)
+        label = self.Label(parent=track, align=self.const.TOPRIGHT, top=2, width=52, text=self.format_value(key,value), state=self.const.UI_DISABLED)
         def change(control):
             value = round(control.GetValue() / step) * step
             value = max(low, min(high, value))
@@ -256,11 +286,91 @@ class ControllerSettings(object):
             else:
                 value = round(value, 2)
             if self.save({key: value}):
-                label.text = title + ': ' + str(value)
+                label.text = self.format_value(key,value)
                 control.SetValue(value)
         # Native Signal stores functions weakly; retain each closure for this panel.
         self.callbacks[key] = change
-        self.widgets[key] = self.Slider(parent=row, align=self.const.TOTOP, padTop=22, height=16, minValue=low, maxValue=high, value=value, isInteger=step >= 1, callback=change)
+        self.widgets[key] = self.Slider(parent=track, align=self.const.TOTOP, padTop=4, padRight=64, height=16, minValue=low, maxValue=high, value=value, isInteger=step >= 1, callback=change)
+
+    def format_value(self,key,value):
+        return '%d%%' % round(value*100) if key=='deadzone' else ('%.2f'%value).rstrip('0').rstrip('.')
+
+    def shortcut_title(self,item):
+        return (item['modifier'].replace('+',' + ')+' + ' if item['modifier']!='NONE' else '')+item['key']
+
+    def build_custom_editor(self,panel):
+        draft=self.custom_draft
+        row=self.row(panel,58)
+        left=self.Container(parent=row,align=self.const.TOLEFT_PROP,width=.5,padRight=12)
+        right=self.Container(parent=row,align=self.const.TOALL,padLeft=12)
+        self.Label(parent=left,align=self.const.TOTOP,text='Modifier',padBottom=6)
+        self.Label(parent=right,align=self.const.TOTOP,text='Keyboard Key',padBottom=6)
+        self.widgets['custom_modifier']=self.Combo(parent=left,align=self.const.TOTOP,options=[(title,value) for title,value,codes in self.api['SHORTCUT_MODIFIERS']],select=draft['modifier'],callback=self.custom_modifier)
+        self.widgets['custom_key']=self.Combo(parent=right,align=self.const.TOTOP,options=[(key,key) for key,code in self.api['SHORTCUT_KEYS']],select=draft['key'],callback=self.custom_key)
+        self.widgets['custom_action']=self.Label(parent=panel,align=self.const.TOTOP,text='',padTop=4,padBottom=12)
+        row=self.row(panel,40)
+        self.button(row,'Save Binding' if draft['id'] else 'Add Binding',self.add_custom,width=112)
+        self.widgets['custom_input']=self.Button(parent=row,align=self.const.TOALL,padRight=12,
+                                                label=display_binding(draft['controller']) if draft['controller'] else 'Choose Controller Input',func=self.capture_callback('custom:draft'))
+        if draft['id']:
+            self.Button(parent=panel,align=self.const.TOTOP,label='Cancel Editing',func=self.reset_custom,padBottom=8)
+        self.refresh_custom_action()
+
+    def custom_modifier(self,combo,label,value):
+        self.custom_draft['modifier']=value
+        self.refresh_custom_action()
+
+    def custom_key(self,combo,label,value):
+        self.custom_draft['key']=value
+        self.refresh_custom_action()
+
+    def resolve_custom(self,item):
+        function=self.controller.helpers.get('_ec_custom_command')
+        return function(self.controller.ui,item['modifier'],item['key']) if function else None
+
+    def refresh_custom_action(self):
+        try:command=self.resolve_custom(self.custom_draft)
+        except Exception:command=None
+        self.widgets['custom_action'].text='Action: '+command.GetDescription() if command else 'Assign This Shortcut In Settings → Shortcuts First'
+
+    def reset_custom(self,*args):
+        self.abort()
+        self.custom_draft=dict(id=None,modifier='NONE',key='F1',controller='')
+        self.rebuild()
+
+    def edit_custom_callback(self,item):
+        def edit(*args):
+            self.abort()
+            self.custom_draft=dict(item)
+            self.rebuild()
+        return edit
+
+    def remove_custom_callback(self,identity):
+        def remove(*args):
+            self.abort()
+            if self.custom_draft['id']==identity:
+                self.custom_draft=dict(id=None,modifier='NONE',key='F1',controller='')
+            return self.save({'customBindings':[item for item in self.controller.settings['customBindings'] if item['id']!=identity]},rebuild=True)
+        return remove
+
+    def add_custom(self,*args):
+        if self.capture or self.identifying:
+            self.message('Finish Input Detection First')
+            return False
+        draft=dict(self.custom_draft)
+        try:command=self.resolve_custom(draft)
+        except Exception:command=None
+        if command is None:
+            self.message('Assign This Shortcut In Settings → Shortcuts First')
+            return False
+        if not draft['controller']:
+            self.message('Choose Controller Input First')
+            return False
+        draft['command']=command.name
+        if self.commit_binding(None,draft['controller'],draft):
+            self.reset_custom()
+            return True
+        return False
 
     def begin_capture(self, action):
         self.abort()
@@ -284,10 +394,85 @@ class ControllerSettings(object):
             cancel.display = False
 
     def set_binding(self, action, value):
-        bindings = dict(self.controller.settings['bindings'])
-        bindings[action] = value
-        if self.save({'bindings': bindings}, rebuild=True):
+        if action=='custom:draft':
+            self.custom_draft['controller']=self.api['binding'](value,'custom')
+            self.rebuild()
             return True
+        return self.commit_binding(action,value)
+
+    def conflicts(self,state,action,value,item=None):
+        found=[]
+        for other,title in self.api['ACTIONS']:
+            old=state['bindings'][other]
+            if other==action or set((other,action))==set(('fly','stop')):
+                continue
+            collision=self.api['binding_overlap'](value,old) if item is not None else bool(value and old and value.replace('_Y','')==old.replace('_Y',''))
+            if collision:found.append(('builtin',other,title,old))
+        for old in state['customBindings']:
+            if item is not None and old['id']==item.get('id'):
+                continue
+            if self.api['binding_overlap'](value,old['controller']):
+                found.append(('custom',old['id'],self.shortcut_title(old),old['controller']))
+        return found
+
+    def confirm_override(self,conflicts,value,title):
+        from eve.client.script.ui.shared.messagebox import MessageBox
+        from player_messaging import PromptOptions, PromptIcon, PromptResult
+        lines=['<b>'+old_title+'</b> ('+display_binding(old)+')' for kind,identity,old_title,old in conflicts]
+        navigation_warning='<br><br>This also removes controller left-click and radial access. Use mouse/keyboard to assign a replacement.' if any(kind=='builtin' and identity=='leftClick' for kind,identity,old_title,old in conflicts) else ''
+        self.confirming=True
+        try:
+            response=MessageBox.prompt_player(text='This input is already assigned to:<br><br>'+'<br>'.join(lines)+'<br><br>Replace these bindings with <b>'+title+'</b> on <b>'+display_binding(value)+'</b>? The existing assignments will be removed.'+navigation_warning,
+                                              title='Replace Controller Binding?',buttons=PromptOptions.OKCANCEL,icon=PromptIcon.WARNING,
+                                              default_response=PromptResult.CANCEL,modal=True,is_suppressable=False,
+                                              ok_label='Replace Binding',cancel_label='Cancel')
+            return (response[0] if isinstance(response,tuple) else response)==PromptResult.OK
+        finally:self.confirming=False
+
+    def commit_binding(self,action,value,item=None):
+        if self.confirming or self.closed:
+            return False
+        value=self.api['binding'](value,action or 'custom')
+        for attempt in range(3):
+            with open(os.path.join(self.controller.directory,'preferences.json'),'rb') as stream:
+                content=stream.read(65537)
+            if len(content)>65536:
+                self.message('Configuration Is Too Large');return False
+            state=self.api['preferences'](json.loads(content))
+            conflicts=self.conflicts(state,action,value,item)
+            if conflicts:
+                command=self.resolve_custom(item) if item is not None else None
+                title=command.GetDescription() if command is not None else dict(self.api['ACTIONS']).get(action,'Custom Shortcut')
+                if not self.confirm_override(conflicts,value,title):
+                    self.message('Binding Change Canceled');return False
+                if self.closed or not self.controller.active:
+                    return False
+                with open(os.path.join(self.controller.directory,'preferences.json'),'rb') as stream:
+                    current_content=stream.read(65537)
+                if len(current_content)>65536:
+                    self.message('Configuration Is Too Large');return False
+                current=self.api['preferences'](json.loads(current_content))
+                if current['bindings']!=state['bindings'] or current['customBindings']!=state['customBindings']:
+                    continue
+            bindings=dict(state['bindings'])
+            custom=[dict(old) for old in state['customBindings']]
+            for kind,identity,title,old in conflicts:
+                if kind=='builtin':bindings[identity]=''
+                else:custom=[old for old in custom if old['id']!=identity]
+            if item is None:
+                bindings[action]=value
+            else:
+                item=dict(item)
+                if item.get('id') is None:
+                    item['id']='custom-%d'%(max([int(old['id'][7:]) for old in state['customBindings']]+[0])+1)
+                custom=[old for old in custom if old['id']!=item['id']]
+                custom.append(item)
+                command=self.resolve_custom(item)
+                if command is None or command.name!=item['command']:
+                    self.message('Keyboard Shortcut Changed; Choose It Again');return False
+            return self.save({'bindings':bindings,'customBindings':custom},rebuild=True,
+                             expected={'bindings':state['bindings'],'customBindings':state['customBindings']})
+        self.message('Bindings Changed; Try Again')
         return False
 
     def choose_profile(self, combo, label, value):

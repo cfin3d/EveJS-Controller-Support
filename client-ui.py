@@ -16,6 +16,37 @@ def _ec_hover_target(uicore):
     return _ec_target_bounds(uicore, getattr(getattr(uicore, 'uilib', None), 'mouseOver', None))
 
 
+def _ec_custom_command(uicore, modifier, key):
+    keys = dict([(chr(code), code) for code in range(65,91)] + [(str(i),48+i) for i in range(10)] + [('F%d'%i,111+i) for i in range(1,25)] + [('Space',32),('Tab',9),('Enter',13),('Escape',27),('Backspace',8),('Insert',45),('Delete',46),('Home',36),('End',35),('Page Up',33),('Page Down',34),('Up',38),('Down',40),('Left',37),('Right',39)])
+    mods = {'CTRL':17,'ALT':18,'SHIFT':16}
+    shortcut = tuple([mods[token] for token in modifier.split('+') if token != 'NONE'] + [keys[key]])
+    mapping = uicore.cmd.commandMap
+    command = mapping.GetCommandByShortcut(shortcut)
+    if command is None:
+        command = next((item for item in mapping.GetAllMappedCommands() if item.shortcut and item.shortcut[-1] == shortcut[-1] and set(item.shortcut[:-1]) == set(shortcut[:-1])), None)
+    return command
+
+
+def _ec_custom_execute(uicore, binding):
+    if uicore.registry.GetModalWindow() is not None or getattr(getattr(_ec_builtins,'session',None),'mutating',False):
+        return
+    command = _ec_custom_command(uicore, binding['modifier'], binding['key'])
+    if command is None or command.name != binding['command'] or not uicore.cmd.IsCommandEnabled(command):
+        return
+    uicore.cmd.ExecuteCommand(command)
+    if getattr(command,'category',None) == 'combat' and getattr(uicore.cmd,'combatCmdLoaded',None) is command:
+        # Native combat shortcuts load an action for an object. Use EVE's
+        # selected object and clean up the loaded command after dispatch.
+        from eve.client.script.parklife import states
+        try:
+            item_id = _ec_builtins.sm.GetService('stateSvc').GetExclState(states.selected)
+            if item_id:
+                uicore.cmd.ExecuteCombatCommand(item_id)
+        finally:
+            if getattr(uicore.cmd,'combatCmdLoaded',None) is command:
+                uicore.cmd.UnloadCombatCommand()
+
+
 def _ec_radial_record(item_id):
     from eve.client.script.parklife import targetMgr
     session = getattr(_ec_builtins, 'session', None)

@@ -159,7 +159,8 @@ In EVE, open **Settings → Controller**. Changes save and apply automatically.
 | **Controller** | Auto-detect or choose a connected device. **Identify Controller** selects the device you use next. |
 | **Camera** | Adjust pan/zoom speed and toggle **Invert Camera Pan** for vertical panning. |
 | **Cursor and Hold Timing** | Adjust precision, UI attraction, cursor appearance, and click/stop timing. |
-| **Bindings** | Select an action's binding, then enter a button, stick, or combination. Conflicts are flagged. |
+| **Bindings** | Rebind an action or clear its input. Conflicts show a confirmation before replacing the previous assignment. |
+| **Custom Bindings** | Choose a modifier and keyboard key, capture a controller button/combination, then select **Add Binding**. |
 | **Profiles** | Save, load, or delete named configurations; **Restore Defaults** restores the default controls and feel. |
 
 <details>
@@ -183,6 +184,18 @@ In EVE, open **Settings → Controller**. Changes save and apply automatically.
 - **Tap/Hold:** flight occurs on release; stop uses the configured hold time. They can share one binding.
 - **Rear Buttons:** separate bindings require independently exposed inputs. The current backend exposes standard XInput buttons, sticks, and triggers; rear buttons mapped to those inputs share their bindings.
 - **Launcher:** basic feel settings remain available under **Mods → EveJS Controller → Configure** and use the same configuration file.
+
+</details>
+
+<details>
+<summary><strong>Custom Shortcuts and Conflicts</strong></summary>
+
+- Uses keyboard shortcuts configured in **Settings → Shortcuts**. The editor shows the EVE action assigned to the selected modifier/key; configure an unassigned shortcut there first.
+- Custom actions run once per controller press through EVE's native command dispatcher. They pause in Settings, during input capture, and while the controller radial is open.
+- Selecting an existing custom row opens it for editing; **Remove** deletes it. Custom bindings are included in saved profiles.
+- **Replace Binding** removes the conflicting controller assignments and saves the new one. **Cancel** leaves the existing configuration intact.
+- A replacement can disable a core controller action. The dialog names affected actions and explains when replacing left-click requires mouse/keyboard to configure a replacement.
+- Supports up to **32 custom bindings**. If an EVE shortcut later changes to another action, the old custom binding does not execute that new action automatically.
 
 </details>
 

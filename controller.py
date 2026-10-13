@@ -350,8 +350,9 @@ class _Input(ctypes.Structure):
 
 
 class _MouseHook(ctypes.Structure):
-    _fields_ = [('point', _Point), ('data', ctypes.c_uint32), ('flags', ctypes.c_uint32),
-               ('time', ctypes.c_uint32), ('extra', ctypes.c_size_t)]
+    # MOUSEHOOKSTRUCT for a thread-local WH_MOUSE observer (not MSLLHOOKSTRUCT).
+    _fields_ = [('point', _Point), ('window', ctypes.c_void_p),
+               ('hit_test', ctypes.c_uint32), ('extra', ctypes.c_size_t)]
 
 
 class WindowsInput(object):
@@ -373,6 +374,8 @@ class WindowsInput(object):
         self.physical_buttons = set()
         self.keys = set()
         self.mouse_hook, self.mouse_callback = None, None
+        self.mouse_position = None
+        self.sent_positions = []
         self.xinput = None
         for name in ('xinput1_4', 'xinput9_1_0'):
             try:
@@ -393,20 +396,33 @@ class WindowsInput(object):
         self.user.CallNextHookEx.restype = ctypes.c_ssize_t
         self.user.UnhookWindowsHookEx.argtypes = [ctypes.c_void_p]
         kernel = ctypes.WinDLL('kernel32', use_last_error=True)
-        kernel.GetModuleHandleW.argtypes = [ctypes.c_wchar_p]
-        kernel.GetModuleHandleW.restype = ctypes.c_void_p
+        kernel.GetCurrentThreadId.argtypes = []
+        kernel.GetCurrentThreadId.restype = ctypes.c_uint32
+        self.mouse_position = self.position()
+        self.sent_positions = []
         self.mouse_callback = callback_type(self.mouse_event)
-        # EVE's main UI thread supplies the message pump; never suppress events.
-        self.mouse_hook = self.user.SetWindowsHookExW(14, self.mouse_callback, kernel.GetModuleHandleW(None), 0)
+        # Observe only messages retrieved by EVE's UI thread. A global low-level
+        # hook makes desktop input wait for EVE's background message pump.
+        self.mouse_hook = self.user.SetWindowsHookExW(7, self.mouse_callback, None, kernel.GetCurrentThreadId())
         if not self.mouse_hook:
             self.mouse_callback = None
             raise ctypes.WinError(ctypes.get_last_error())
 
     def mouse_event(self, code, message, address):
         try:
-            if code >= 0 and address:
+            if code == 0 and address:
                 event = ctypes.cast(address, ctypes.POINTER(_MouseHook)).contents
-                if event.extra != TAG:
+                position = (event.point.x, event.point.y)
+                moved = position != self.mouse_position
+                self.mouse_position = position
+                now = time.time()
+                self.sent_positions = [(point, stamp) for point, stamp in self.sent_positions if now - stamp < .2]
+                generated = event.extra == TAG
+                if message in (0x200, 0xA0):
+                    # Windows also emits movement messages for cursor/window
+                    # refreshes. Coalescing may discard our SendInput tag.
+                    generated = generated or not moved or any(point == position for point, stamp in self.sent_positions)
+                if not generated and (message in (0x200, 0xA0, 0x20A, 0x20E) or 0x201 <= message <= 0x209 or 0x20B <= message <= 0x20D or 0xA1 <= message <= 0xAD):
                     self.pending = True
                     if message in (0x201, 0x204):
                         self.physical_buttons.add(1 if message == 0x201 else 2)
@@ -421,6 +437,8 @@ class WindowsInput(object):
             self.user.UnhookWindowsHookEx(self.mouse_hook)
             self.mouse_hook = None
         self.mouse_callback = None
+        self.sent_positions = []
+        self.mouse_position = None
 
     def read(self, index):
         if index != -1:
@@ -474,7 +492,14 @@ class WindowsInput(object):
         x, y = max(left, min(left + width - 1, x)), max(top, min(top + height - 1, y))
         vx, vy = self.user.GetSystemMetrics(76), self.user.GetSystemMetrics(77)
         vw, vh = self.user.GetSystemMetrics(78), self.user.GetSystemMetrics(79)
-        self.send(0x8000 | 0x4000 | 1, int(round((x - vx) * 65535. / max(1, vw - 1))), int(round((y - vy) * 65535. / max(1, vh - 1))))
+        sx, sy = int(round((x - vx) * 65535. / max(1, vw - 1))), int(round((y - vy) * 65535. / max(1, vh - 1)))
+        # Record both the requested and Windows' quantized absolute position
+        # before delivery, then the actual position after SendInput returns.
+        now = time.time()
+        points = [(x, y), (vx + (sx * vw // 65536), vy + (sy * vh // 65536))]
+        self.sent_positions = (self.sent_positions + [(point, now) for point in points])[-64:]
+        self.send(0x8000 | 0x4000 | 1, sx, sy)
+        self.sent_positions = (self.sent_positions + [(self.position(), now)])[-64:]
         return x, y
 
     def buttons(self, desired):
@@ -498,14 +523,20 @@ class WindowsInput(object):
         self.buttons(set())
 
     def physical(self):
-        keys = set(key for key in range(8, 255) if self.user.GetAsyncKeyState(key) & 0x8000)
+        # VK_GAMEPAD_* are controller activity, even when exposed by Windows
+        # through its virtual-key state table.
+        keys = set(key for key in range(8, 255) if not 0xC3 <= key <= 0xDA and self.user.GetAsyncKeyState(key) & 0x8000)
         changed = keys != self.keys
         self.keys = keys
         pending, self.pending = self.pending or changed, False
         return pending
 
     def event(self, obj, event_id, param, constants):
-        if getattr(self, 'mouse_hook', None) and event_id not in (getattr(constants, 'UI_KEYDOWN', None), getattr(constants, 'UI_KEYUP', None)):
+        keyboard = event_id in (getattr(constants, 'UI_KEYDOWN', None), getattr(constants, 'UI_KEYUP', None))
+        key = param[0] if isinstance(param, (tuple, list)) and param else param
+        if keyboard and isinstance(key, int) and 0xC3 <= key <= 0xDA:
+            return True
+        if getattr(self, 'mouse_hook', None) and not keyboard:
             # Deferred native drag/mouse events do not carry reliable Win32 tags.
             # The OS observer already classified the original mouse message.
             return True
@@ -557,7 +588,7 @@ class CursorUi(object):
         self.visual += ((1. if snapped else 0.) - self.visual) * (1. - math.exp(-12. * dt))
         self.root.left, self.root.top = self.ui.uilib.x - 42, self.ui.uilib.y - 42
         radius = 13 + 2 * self.visual
-        self.arc(self.lines[0], radius, 1., (.07, .10, .14, 1.))
+        self.arc(self.lines[0], radius, 1., (1., 1., 1., 1.))
         self.arc(self.lines[1], radius, 1., (1., 1., 1., 1.))
         for index, button, radius, color in ((2, 1, 21., (.39, .85, 1., 1.)), (4, 2, 26., (.93, .73, .42, 1.)), (6, 0, 31., (.96, .56, .35, 1.))):
             enabled, fill = (stop, stop_fill) if button == 0 else (button in fills, fills.get(button, 0.))

@@ -48,6 +48,10 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 
 ### Fixed
 
+- Prevent cursor refreshes and coalesced controller movement with missing Windows tags from repeatedly switching to mouse/keyboard mode. Ignore stationary movement notifications while retaining immediate takeover from real movement, clicks, scrolling, and keyboard input.
+- Exclude Windows gamepad virtual-key states from keyboard activity detection.
+- Render the idle and moving cursor ring entirely in solid white, including its thick outer stroke, without requiring a click or hold.
+- Limit the tagged mouse observer to the EVE UI thread instead of using a desktop-wide low-level hook, preventing other applications' mouse input from waiting for EVE's background message pump.
 - Recognize native right-click menu rows that activate through mouse-up handlers, including submenu entries; exclude disabled or non-interactive rows.
 - Keep attraction inside open menu layers and invalidate nearby-target geometry when menus open, close or rebuild, preventing attraction to controls behind the menu.
 - Enable controller camera panning and zoom in station and structure hangars, using the client's active camera while keeping ship commands restricted to space.

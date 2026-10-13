@@ -120,7 +120,7 @@ These are the default bindings. Release a bumper early to cancel its click. A lo
 | **Center Dot** | Flight direction; hidden beneath menus and when UI covers camera center. |
 
 - **UI Attraction:** move slowly toward a nearby control or context-menu item; strong or sustained outward movement escapes attraction. It pauses while clicking or dragging.
-- **White Cursor Ring:** a larger, clear outline with a dark contrast edge; the camera-center dot keeps its minimal size.
+- **White Cursor Ring:** a larger, solid white outline; the camera-center dot keeps its minimal size.
 - **Hold Reset:** changing targets or moving more than 10 pixels restarts an unfinished click hold.
 
 </details>

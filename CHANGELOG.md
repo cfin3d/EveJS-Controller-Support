@@ -28,10 +28,11 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 - A static camera-center dot beneath native menus/windows, hidden for center UI occlusion or open menus/modal dialogs.
 - Automatic startup at EveJS login and live launcher configuration reloads.
 - Launcher installation, configuration, activation and disable/remove integration.
-- A centered white EVE Online logo with transparency, consistent SVG control icons and an EveJS Discord button.
+- A centered white EVEJS Offline logo with transparency, consistent SVG control icons and an EveJS Discord button.
 
 ### Changed
 
+- Update the repository logo to **EVEJS OFFLINE**: preserve the EVE mark, add small subtitle-style **JS** aligned to the second E's bottom edge, and center **OFFLINE** beneath EVE with the original subtitle gap and letter spacing.
 - Refer to the configuration path as **Settings → Controller** throughout the user guide.
 - Simplify the README with a compact usage/control guide, expandable details, and consistent title case for headings and labels.
 - Remove the neutral-input instruction from the installation guide and omit unassigned controls from the displayed mappings.

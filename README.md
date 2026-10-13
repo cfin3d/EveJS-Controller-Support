@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/eve-online-white.png" alt="EVE Online" width="300">
+  <img src="assets/evejs-offline-white.png" alt="EVEJS Offline" width="300">
 </p>
 
 <h1 align="center">EveJS Controller Support</h1>

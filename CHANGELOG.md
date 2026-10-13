@@ -41,6 +41,12 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 - Allow players to remap the agreed actions without adding new default gameplay assignments.
 - Preserve existing right-stick stop holds while camera movement returns to center.
 
+### Fixed
+
+- Resolve the native UI singleton from `carbonui.uicore`. This client does not expose it through builtins, which previously caused startup to exit before registering the Controller category.
+- Register the Controller settings category without requiring a connected controller, and show **No Controller Connected** in its input status.
+- Report ready, unavailable-UI, and unsupported-build startup states in the client login output instead of silently returning without a category.
+
 ### Removed
 
 - The companion executable, manual-start command and notification-area interface.

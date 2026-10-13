@@ -654,10 +654,14 @@ class Controller(object):
 def start(directory, helpers, settings_api=None):
     import eveprefs
     import uthread
+    from carbonui.uicore import uicore
     if int(eveprefs.boot.build) != 3396210:
+        print('EVEJS_CONTROLLER_START:UNSUPPORTED_BUILD')
         return False
-    ui = getattr(_builtins, 'uicore', None)
+    # This client exports its UI singleton from carbonui.uicore, not builtins.
+    ui = uicore
     if ui is None:
+        print('EVEJS_CONTROLLER_START:UI_UNAVAILABLE')
         return False
     previous = getattr(_builtins, '_evejs_controller_native_v1', None)
     if previous is not None:
@@ -665,4 +669,5 @@ def start(directory, helpers, settings_api=None):
     controller = Controller(directory, ui, helpers, settings_api=settings_api)
     setattr(_builtins, '_evejs_controller_native_v1', controller)
     uthread.new(controller.run)
+    print('EVEJS_CONTROLLER_START:READY')
     return True

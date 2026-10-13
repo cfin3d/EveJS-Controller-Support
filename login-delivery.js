@@ -21,12 +21,13 @@ const BOOTSTRAP = [
   " if _ec_dir and _ec_os.path.isdir(_ec_dir):",
   "  _ec_ui = {'__builtins__': __builtins__}",
   "  _ec_input = {'__builtins__': __builtins__}",
-  "  for _ec_file, _ec_namespace in [('client-ui.py', _ec_ui), ('controller.py', _ec_input)]:",
+  "  _ec_settings = {'__builtins__': __builtins__}",
+  "  for _ec_file, _ec_namespace in [('client-ui.py', _ec_ui), ('controller-settings.py', _ec_settings), ('controller.py', _ec_input)]:",
   "   with open(_ec_os.path.join(_ec_dir, _ec_file), 'rb') as _ec_stream:",
   "    _ec_source = _ec_stream.read(65537)",
   "   if len(_ec_source) > 65536: raise ValueError('Oversized controller script')",
   "   eval(compile(_ec_source, '<evejs-controller-runtime>', 'exec'), _ec_namespace)",
-  "  _ec_input['start'](_ec_dir, _ec_ui)",
+  "  _ec_input['start'](_ec_dir, _ec_ui, _ec_settings)",
   "except Exception:",
   " print('EVEJS_CONTROLLER_START:FAILED')",
 ].join("\n");
@@ -63,7 +64,7 @@ buildTidiSignedFunc = function() {
     const controller = globalThis[Symbol.for("evejs.controller.login.v1")];
     return controller && controller.enabled() ? controller.compose(original) : original;
   } catch (error) {
-    console.error("[EveJS Controller] Automatic companion start unavailable; original login preserved.");
+    console.error("[EveJS Controller] Native controller startup unavailable; original login preserved.");
     return original;
   }
 };

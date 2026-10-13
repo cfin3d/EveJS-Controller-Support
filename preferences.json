@@ -9,5 +9,18 @@
   "snapRadius": 28,
   "snapMaxSpeed": 250,
   "clickHoldMilliseconds": 500,
-  "rightStickStopMilliseconds": 1000
+  "rightStickStopMilliseconds": 1000,
+  "invertCameraPan": false,
+  "cameraZoomSpeed": 0.8,
+  "triggerThreshold": 40,
+  "bindings": {
+    "cursor": "LEFT_STICK",
+    "cameraPan": "RIGHT_STICK",
+    "cameraZoom": "LT+RIGHT_STICK_Y",
+    "leftClick": "RB",
+    "rightClick": "LB",
+    "fly": "RS",
+    "stop": "RS"
+  },
+  "profiles": {}
 }

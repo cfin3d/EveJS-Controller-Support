@@ -3,7 +3,7 @@
   "id": "evejs-controller",
   "displayName": "EveJS Controller",
   "version": "0.1.0",
-  "description": "Controller support inside the EVE client with automatic controller and mouse/keyboard switching, analog cursor precision, hold-to-click, camera panning and camera-center ship navigation.",
+  "description": "Controller support inside the EVE client with automatic controller and mouse/keyboard switching, analog cursor precision, hold-to-click, native Controller settings, camera pan/zoom and camera-center ship navigation.",
   "kind": "loader",
   "supportedBackends": [
     "native",
@@ -57,33 +57,33 @@
           "controllerIndex"
         ],
         "restart": "none",
-        "group": "Controller feel",
+        "group": "Controller Feel",
         "choices": [
           {
             "value": -1,
-            "label": "Auto-detect"
+            "label": "Auto-Detect"
           },
           {
             "value": 0,
-            "label": "XInput slot 0"
+            "label": "Controller 1"
           },
           {
             "value": 1,
-            "label": "XInput slot 1"
+            "label": "Controller 2"
           },
           {
             "value": 2,
-            "label": "XInput slot 2"
+            "label": "Controller 3"
           },
           {
             "value": 3,
-            "label": "XInput slot 3"
+            "label": "Controller 4"
           }
         ]
       },
       {
         "id": "deadzone",
-        "label": "Stick deadzone",
+        "label": "Stick Deadzone",
         "type": "number",
         "default": 0.2,
         "file": "preferences",
@@ -91,7 +91,7 @@
           "deadzone"
         ],
         "restart": "none",
-        "group": "Controller feel",
+        "group": "Controller Feel",
         "minimum": 0.05,
         "maximum": 0.5,
         "step": 0.01,
@@ -99,7 +99,7 @@
       },
       {
         "id": "cursorSpeed",
-        "label": "Maximum cursor speed (pixels/second)",
+        "label": "Maximum Cursor Speed (px/s)",
         "type": "integer",
         "default": 1100,
         "file": "preferences",
@@ -107,14 +107,14 @@
           "cursorSpeed"
         ],
         "restart": "none",
-        "group": "Controller feel",
+        "group": "Controller Feel",
         "minimum": 100,
         "maximum": 4000,
         "step": 50
       },
       {
         "id": "cameraSpeed",
-        "label": "Camera movement speed",
+        "label": "Camera Pan Speed",
         "type": "integer",
         "default": 800,
         "file": "preferences",
@@ -122,14 +122,14 @@
           "cameraSpeed"
         ],
         "restart": "none",
-        "group": "Controller feel",
+        "group": "Controller Feel",
         "minimum": 100,
         "maximum": 4000,
         "step": 50
       },
       {
         "id": "cursorRing",
-        "label": "Circular controller cursor",
+        "label": "Circular Cursor",
         "type": "boolean",
         "default": true,
         "file": "preferences",
@@ -137,12 +137,12 @@
           "cursorRing"
         ],
         "restart": "none",
-        "group": "Controller feel",
+        "group": "Controller Feel",
         "description": "A minimal circular cursor with animated attraction and hold-to-click feedback."
       },
       {
         "id": "cursorSnap",
-        "label": "Gentle attraction to UI targets",
+        "label": "UI Attraction",
         "type": "boolean",
         "default": true,
         "file": "preferences",
@@ -150,12 +150,12 @@
           "cursorSnap"
         ],
         "restart": "none",
-        "group": "Controller feel",
+        "group": "Controller Feel",
         "description": "Pulls toward the center of a nearby hovered EVE control while moving the cursor slowly. Strong stick movement escapes it. Does not snap in empty space or during drags."
       },
       {
         "id": "snapRadius",
-        "label": "Attraction radius (pixels)",
+        "label": "Attraction Radius (px)",
         "type": "integer",
         "default": 28,
         "file": "preferences",
@@ -163,7 +163,7 @@
           "snapRadius"
         ],
         "restart": "none",
-        "group": "Controller feel",
+        "group": "Controller Feel",
         "minimum": 8,
         "maximum": 64,
         "step": 1,
@@ -171,7 +171,7 @@
       },
       {
         "id": "snapMaxSpeed",
-        "label": "Maximum speed for attraction (pixels/second)",
+        "label": "Attraction Speed Limit (px/s)",
         "type": "integer",
         "default": 250,
         "file": "preferences",
@@ -179,7 +179,7 @@
           "snapMaxSpeed"
         ],
         "restart": "none",
-        "group": "Controller feel",
+        "group": "Controller Feel",
         "minimum": 50,
         "maximum": 600,
         "step": 10,
@@ -187,7 +187,7 @@
       },
       {
         "id": "clickHoldMilliseconds",
-        "label": "Hold-to-click time (milliseconds)",
+        "label": "Click Hold (ms)",
         "type": "integer",
         "default": 500,
         "file": "preferences",
@@ -195,7 +195,7 @@
           "clickHoldMilliseconds"
         ],
         "restart": "none",
-        "group": "Controller feel",
+        "group": "Controller Feel",
         "minimum": 200,
         "maximum": 2000,
         "step": 50,
@@ -203,7 +203,7 @@
       },
       {
         "id": "rightStickStopMilliseconds",
-        "label": "Right-stick stop hold (milliseconds)",
+        "label": "Stop Hold (ms)",
         "type": "integer",
         "default": 1000,
         "file": "preferences",
@@ -211,11 +211,55 @@
           "rightStickStopMilliseconds"
         ],
         "restart": "none",
-        "group": "Controller feel",
+        "group": "Controller Feel",
         "minimum": 500,
         "maximum": 3000,
         "step": 100,
         "description": "Default 1000 ms. Release a shorter right-stick press to fly toward camera center. Hold this long to stop without issuing forward flight."
+      },
+      {
+        "id": "invertCameraPan",
+        "label": "Invert Camera Pan",
+        "type": "boolean",
+        "default": false,
+        "file": "preferences",
+        "key": [
+          "invertCameraPan"
+        ],
+        "restart": "none",
+        "group": "Controller Feel",
+        "description": "Reverse vertical panning only. Cursor movement and zoom keep their direction."
+      },
+      {
+        "id": "cameraZoomSpeed",
+        "label": "Camera Zoom Speed",
+        "type": "number",
+        "default": 0.8,
+        "file": "preferences",
+        "key": [
+          "cameraZoomSpeed"
+        ],
+        "restart": "none",
+        "group": "Controller Feel",
+        "minimum": 0.1,
+        "maximum": 3,
+        "step": 0.1
+      },
+      {
+        "id": "triggerThreshold",
+        "label": "Trigger Activation",
+        "type": "integer",
+        "default": 40,
+        "file": "preferences",
+        "key": [
+          "triggerThreshold"
+        ],
+        "restart": "none",
+        "group": "Controller Feel",
+        "minimum": 10,
+        "maximum": 240,
+        "step": 5,
+        "advanced": true
       }
     ]
   }

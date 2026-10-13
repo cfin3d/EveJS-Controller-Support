@@ -11,9 +11,102 @@ except ImportError:
 
 TAG = 0x45564354
 LB, RB, RS = 0x100, 0x200, 0x80
+BUTTONS = [('LT', 0x10000), ('RT', 0x20000), ('LB', LB), ('RB', RB),
+           ('A', 0x1000), ('B', 0x2000), ('X', 0x4000), ('Y', 0x8000),
+           ('UP', 1), ('DOWN', 2), ('LEFT', 4), ('RIGHT', 8),
+           ('VIEW', 0x20), ('MENU', 0x10), ('LS', 0x40), ('RS', RS)]
+BUTTON_BITS = dict(BUTTONS)
+ACTIONS = [('cursor', 'Move Cursor'), ('cameraPan', 'Pan Camera'),
+           ('cameraZoom', 'Zoom Camera'), ('leftClick', 'Left-Click'),
+           ('rightClick', 'Right-Click'), ('fly', 'Fly Toward Camera Center'), ('stop', 'Stop Ship')]
+DEFAULT_BINDINGS = dict(cursor='LEFT_STICK', cameraPan='RIGHT_STICK',
+                        cameraZoom='LT+RIGHT_STICK_Y', leftClick='RB', rightClick='LB', fly='RS', stop='RS')
 DEFAULTS = dict(schemaVersion=1, controllerIndex=-1, deadzone=.20, cursorSpeed=1100,
                 cameraSpeed=800, cursorRing=True, cursorSnap=True, snapRadius=28,
-                snapMaxSpeed=250, clickHoldMilliseconds=500, rightStickStopMilliseconds=1000)
+                snapMaxSpeed=250, clickHoldMilliseconds=500, rightStickStopMilliseconds=1000,
+                invertCameraPan=False, cameraZoomSpeed=.8, triggerThreshold=40,
+                bindings=DEFAULT_BINDINGS, profiles={})
+
+
+def binding(value, action):
+    if not isinstance(value, type('')):
+        try:
+            if not isinstance(value, unicode):
+                raise ValueError('Invalid Binding')
+        except NameError:
+            raise ValueError('Invalid Binding')
+    if not value:
+        return ''
+    tokens = value.upper().split('+')
+    if len(set(tokens)) != len(tokens) or len(tokens) > 4:
+        raise ValueError('Invalid Binding')
+    axes = [token for token in tokens if token.endswith('_STICK') or token.endswith('_STICK_Y')]
+    expected = ('LEFT_STICK_Y', 'RIGHT_STICK_Y') if action == 'cameraZoom' else ('LEFT_STICK', 'RIGHT_STICK')
+    analog = action in ('cursor', 'cameraPan', 'cameraZoom')
+    if analog and (len(axes) != 1 or axes[0] not in expected) or not analog and axes:
+        raise ValueError('Use A Stick For Movement And Buttons For Actions')
+    buttons = [name for name, bit in BUTTONS if name in tokens]
+    if len(buttons) + len(axes) != len(tokens):
+        raise ValueError('Unknown Controller Input')
+    return '+'.join(buttons + axes)
+
+
+def validate_bindings(document):
+    if not isinstance(document, dict) or set(document) - set(DEFAULT_BINDINGS):
+        raise ValueError('Invalid Bindings')
+    result = dict(DEFAULT_BINDINGS)
+    result.update(document)
+    result = dict((action, binding(value, action)) for action, value in result.items())
+    for i, (a, title) in enumerate(ACTIONS):
+        for b, other_title in ACTIONS[i + 1:]:
+            if not result[a] or not result[b] or set((a, b)) == set(('fly', 'stop')):
+                continue
+            first = result[a].replace('_Y', '')
+            second = result[b].replace('_Y', '')
+            if first == second:
+                raise ValueError(title + ' Conflicts With ' + other_title)
+    return result
+
+
+def input_mask(pad, settings):
+    return pad[0] | (0x10000 if pad[5] >= settings['triggerThreshold'] else 0) | (0x20000 if pad[6] >= settings['triggerThreshold'] else 0)
+
+
+def binding_mask(value):
+    return sum(BUTTON_BITS.get(token, 0) for token in value.split('+'))
+
+
+def released(value, pad, settings):
+    mask = input_mask(pad, settings)
+    needed = binding_mask(value)
+    primary = BUTTON_BITS.get(value.split('+')[-1], 0)
+    modifiers = needed & ~primary
+    return not mask & primary and (mask & modifiers == modifiers or not mask & needed)
+
+
+def matches(action, pad, settings, priority=True):
+    value = settings['bindings'][action]
+    if not value:
+        return False
+    mask, needed = input_mask(pad, settings), binding_mask(value)
+    if mask & needed != needed:
+        return False
+    if priority:
+        tokens = set(value.replace('_Y', '').split('+'))
+        for other, candidate in settings['bindings'].items():
+            if other == action or not candidate:
+                continue
+            extra = set(candidate.replace('_Y', '').split('+'))
+            if tokens < extra and matches(other, pad, settings, False):
+                return False
+    return True
+
+
+def axes(action, pad, settings):
+    if not matches(action, pad, settings):
+        return 0., 0.
+    offset = 1 if 'LEFT_STICK' in settings['bindings'][action] else 3
+    return stick(pad[offset], pad[offset + 1], settings['deadzone'])
 
 
 def preferences(document):
@@ -23,19 +116,28 @@ def preferences(document):
         raise ValueError('Unsupported preferences version')
     ranges = dict(controllerIndex=(-1, 3), deadzone=(.05, .5), cursorSpeed=(100, 4000),
                   cameraSpeed=(100, 4000), snapRadius=(8, 64), snapMaxSpeed=(50, 600),
-                  clickHoldMilliseconds=(200, 2000), rightStickStopMilliseconds=(500, 3000))
+                  clickHoldMilliseconds=(200, 2000), rightStickStopMilliseconds=(500, 3000),
+                  cameraZoomSpeed=(.1, 3.), triggerThreshold=(10, 240))
     for name, limits in ranges.items():
         value = result[name]
         if isinstance(value, bool) or not isinstance(value, (int, float)) or math.isnan(value) or math.isinf(value) or not limits[0] <= value <= limits[1]:
             raise ValueError('Invalid ' + name)
-    for name in ('controllerIndex', 'clickHoldMilliseconds', 'rightStickStopMilliseconds'):
+    for name in ('controllerIndex', 'clickHoldMilliseconds', 'rightStickStopMilliseconds', 'triggerThreshold'):
         if int(result[name]) != result[name]:
             raise ValueError('Invalid ' + name)
         result[name] = int(result[name])
-    for name in ('cursorRing', 'cursorSnap'):
+    for name in ('cursorRing', 'cursorSnap', 'invertCameraPan'):
         if not isinstance(result[name], bool):
             raise ValueError('Invalid ' + name)
-    # Bindings are fixed to the agreed controls. Older extra bindings are ignored.
+    result['bindings'] = validate_bindings(document.get('bindings', {}))
+    profiles = document.get('profiles', {})
+    if not isinstance(profiles, dict) or len(profiles) > 20:
+        raise ValueError('Invalid Profiles')
+    for name, profile in profiles.items():
+        if not name or len(name) > 40 or not isinstance(profile, dict) or 'profiles' in profile:
+            raise ValueError('Invalid Profile')
+        preferences(dict(profile, profiles={}))
+    result['profiles'] = profiles
     return result
 
 
@@ -59,7 +161,7 @@ class InputMode(object):
         if pad is None or not foreground:
             self.reset()
             return False
-        neutral = pad[0] == 0 and pad[5] < 40 and pad[6] < 40 and stick(pad[1], pad[2], settings['deadzone']) == (0., 0.) and stick(pad[3], pad[4], settings['deadzone']) == (0., 0.)
+        neutral = input_mask(pad, settings) == 0 and stick(pad[1], pad[2], settings['deadzone']) == (0., 0.) and stick(pad[3], pad[4], settings['deadzone']) == (0., 0.)
         old = self.previous
         self.previous = pad
         if not self.ready:
@@ -86,10 +188,24 @@ class Gestures(object):
     def reset(self):
         self.started, self.stopped, self.was_pressed = None, False, False
         self.holds = {}
+        self.fly_started, self.fly_was_pressed, self.blocked = None, False, set()
+
+    def pause_navigation(self, pad, settings):
+        self.started, self.stopped, self.was_pressed = None, False, False
+        self.fly_started, self.fly_was_pressed = None, False
+        for action in ('fly', 'stop'):
+            if matches(action, pad, settings, False):
+                self.blocked.add(action)
 
     def step(self, pad, x, y, target, now, settings):
-        mask = pad[0]
-        pressed = bool(mask & RS)
+        pressed = matches('stop', pad, settings)
+        flying = matches('fly', pad, settings)
+        for name in list(self.blocked):
+            if not matches(name, pad, settings, False):
+                self.blocked.remove(name)
+        pressed = pressed and 'stop' not in self.blocked
+        flying = flying and 'fly' not in self.blocked
+        shared = settings['bindings']['fly'] == settings['bindings']['stop']
         action, progress = None, 0.
         if pressed and not self.was_pressed:
             self.started, self.stopped = now, False
@@ -98,13 +214,29 @@ class Gestures(object):
             if progress >= 1. and not self.stopped:
                 action, self.stopped = 'stop', True
         if not pressed and self.was_pressed and self.started is not None:
-            if not self.stopped:
-                action = 'stop' if (now - self.started) * 1000. >= settings['rightStickStopMilliseconds'] else 'fly'
+            interrupted = not released(settings['bindings']['stop'], pad, settings)
+            if interrupted:
+                self.blocked.add('stop')
+            elif not self.stopped:
+                if (now - self.started) * 1000. >= settings['rightStickStopMilliseconds']:
+                    action = 'stop'
+                elif shared:
+                    action = 'fly'
             self.started, self.stopped = None, False
         self.was_pressed = pressed
+        if not shared:
+            if flying and not self.fly_was_pressed:
+                self.fly_started = now
+            if not flying and self.fly_was_pressed:
+                if not released(settings['bindings']['fly'], pad, settings):
+                    self.blocked.add('fly')
+                elif action is None:
+                    action = 'fly'
+                self.fly_started = None
+            self.fly_was_pressed = flying
         held, fills = set(), {}
-        for bit, button in ((RB, 1), (LB, 2)):
-            if not mask & bit:
+        for name, button in (('leftClick', 1), ('rightClick', 2)):
+            if not matches(name, pad, settings):
                 self.holds.pop(button, None)
                 continue
             hold = self.holds.get(button)
@@ -228,6 +360,15 @@ class WindowsInput(object):
                 return (p.buttons, p.lx, p.ly, p.rx, p.ry, p.lt, p.rt), changed
         self.selected = -1
         return None, False
+
+    def scan(self):
+        connected = {}
+        for slot in range(4):
+            state = _State()
+            if self.xinput(slot, ctypes.byref(state)) == 0:
+                p = state.pad
+                connected[slot] = (p.buttons, p.lx, p.ly, p.rx, p.ry, p.lt, p.rt)
+        return connected
 
     def foreground(self):
         pid = ctypes.c_uint32()
@@ -360,13 +501,22 @@ class CursorUi(object):
 
 
 class Controller(object):
-    def __init__(self, directory, ui, helpers, native=None, overlay=None):
+    def __init__(self, directory, ui, helpers, native=None, overlay=None, settings_api=None):
         self.directory, self.ui, self.helpers = directory, ui, helpers
         self.native, self.overlay = native or WindowsInput(), overlay or CursorUi(ui, helpers)
         self.mode, self.gestures, self.magnet = InputMode(), Gestures(), Magnet()
         self.active, self.settings, self.last_settings, self.last_tick = True, preferences({}), -1., time.time()
         self.cookie, self.constants = None, None
         self.remainder_x, self.remainder_y = 0., 0.
+        self.menu = None
+        try:
+            self.menu = settings_api['install'](self, globals()) if settings_api else None
+        except Exception:
+            try:
+                self.native.release()
+            finally:
+                self.overlay.close()
+            raise
 
     def listen(self):
         import carbonui.const as constants
@@ -404,6 +554,9 @@ class Controller(object):
         if settings != self.settings:
             self.cancel()
             self.mode.reset()
+            if self.menu and (self.menu.capture or self.menu.identifying):
+                self.menu.abort()
+                self.menu.message('Configuration Changed; Input Detection Canceled')
             self.settings = settings
 
     def tick(self, now):
@@ -417,19 +570,24 @@ class Controller(object):
             self.mode.reset()
             self.cancel()
         physical = self.native.physical()
-        active = self.mode.step(pad, physical, self.native.foreground(), self.settings)
+        foreground = self.native.foreground()
+        if self.menu and self.menu.tick(now, foreground):
+            self.cancel()
+            self.mode.reset()
+            return
+        active = self.mode.step(pad, physical, foreground, self.settings)
         if not active:
             self.cancel()
             return
         x, y = self.native.position()
-        dx, dy = stick(pad[1], pad[2], self.settings['deadzone'])
+        dx, dy = axes('cursor', pad, self.settings)
         dx, dy = dx * self.settings['cursorSpeed'] * dt, -dy * self.settings['cursorSpeed'] * dt
         hover = self.helpers['_ec_hover_target'](self.ui)
         target = None
         if hover is not None:
             left, top, width, height = self.native.bounds()
             target = (hover['id'], left + hover['x'] * width, top + hover['y'] * height, hover['w'] * width, hover['h'] * height)
-        dx, dy, snapped = self.magnet.step(x, y, dx, dy, target, dt, self.settings, bool(pad[0] & (LB | RB)))
+        dx, dy, snapped = self.magnet.step(x, y, dx, dy, target, dt, self.settings, matches('leftClick', pad, self.settings) or matches('rightClick', pad, self.settings))
         dx, dy = dx + self.remainder_x, dy + self.remainder_y
         step_x, step_y = int(dx), int(dy)
         self.remainder_x, self.remainder_y = dx - step_x, dy - step_y
@@ -437,15 +595,25 @@ class Controller(object):
             x, y = self.native.move(x + step_x, y + step_y)
         held, fills, action, stop, stop_fill = self.gestures.step(pad, x, y, hover['id'] if hover else None, now, self.settings)
         self.native.buttons(held)
-        rx, ry = stick(pad[3], pad[4], self.settings['deadzone'])
+        rx, ry = axes('cameraPan', pad, self.settings)
+        zx, zy = axes('cameraZoom', pad, self.settings)
+        menu_layer = getattr(getattr(self.ui, 'layer', None), 'systemmenu', None)
+        settings_open = bool(menu_layer is not None and getattr(menu_layer, 'display', False) and
+                             any(getattr(child, 'display', False) and not getattr(child, 'destroyed', False) for child in getattr(menu_layer, 'children', [])))
         session = getattr(_builtins, 'session', None)
-        if (rx or ry) and session is not None and getattr(session, 'solarsystemid', None) and not getattr(session, 'stationid', None) and not getattr(session, 'structureid', None):
+        if not settings_open and (rx or ry or zy) and session is not None and getattr(session, 'solarsystemid', None) and not getattr(session, 'stationid', None) and not getattr(session, 'structureid', None):
             sm = getattr(_builtins, 'sm', None)
             camera = sm.GetService('sceneManager').GetActiveSpaceCamera() if sm else None
             if camera is not None:
-                camera.Orbit(rx * self.settings['cameraSpeed'] * dt * .005, -ry * self.settings['cameraSpeed'] * dt * .005)
-        if action:
+                if rx or ry:
+                    camera.Orbit(rx * self.settings['cameraSpeed'] * dt * .005, ry * (1 if self.settings['invertCameraPan'] else -1) * self.settings['cameraSpeed'] * dt * .005)
+                if zy:
+                    camera.Zoom(-zy * self.settings['cameraZoomSpeed'] * dt)
+        if action and not settings_open:
             print('EVEJS_CONTROLLER:' + self.helpers['_ec_navigation'](action, self.ui))
+        if settings_open:
+            self.gestures.pause_navigation(pad, self.settings)
+            stop, stop_fill = False, 0.
         self.overlay.update(True, self.settings['cursorRing'], snapped, fills, stop, stop_fill, dt)
 
     def close(self):
@@ -460,7 +628,11 @@ class Controller(object):
                     self.ui.event.UnregisterForTriuiEvents(self.cookie)
                     self.cookie = None
             finally:
-                self.overlay.close()
+                try:
+                    if self.menu:
+                        self.menu.close()
+                finally:
+                    self.overlay.close()
 
     def run(self):
         import blue
@@ -479,7 +651,7 @@ class Controller(object):
             self.close()
 
 
-def start(directory, helpers):
+def start(directory, helpers, settings_api=None):
     import eveprefs
     import uthread
     if int(eveprefs.boot.build) != 3396210:
@@ -490,7 +662,7 @@ def start(directory, helpers):
     previous = getattr(_builtins, '_evejs_controller_native_v1', None)
     if previous is not None:
         previous.close()
-    controller = Controller(directory, ui, helpers)
+    controller = Controller(directory, ui, helpers, settings_api=settings_api)
     setattr(_builtins, '_evejs_controller_native_v1', controller)
     uthread.new(controller.run)
     return True

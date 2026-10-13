@@ -7,6 +7,10 @@ import sys
 import time
 
 PANEL_ID = 'evejs-controller'
+BUTTON_ICONS = dict(A='a', B='b', X='x', Y='y', LB='lb', RB='rb', LT='lt', RT='rt',
+                    LS='left-stick', RS='right-stick', LEFT_STICK='left-stick', RIGHT_STICK='right-stick',
+                    LEFT_STICK_Y='left-stick', RIGHT_STICK_Y='right-stick',
+                    UP='dpad-up', DOWN='dpad-down', LEFT='dpad-left', RIGHT='dpad-right', VIEW='view', MENU='menu')
 PROFILE_KEYS = ('bindings', 'customBindings', 'deadzone', 'cursorSpeed', 'cameraSpeed', 'cameraZoomSpeed',
                 'invertCameraPan', 'cursorRing', 'cursorSnap', 'snapRadius', 'snapMaxSpeed',
                 'clickHoldMilliseconds', 'rightStickStopMilliseconds', 'triggerThreshold')
@@ -69,6 +73,25 @@ def write_preferences(directory, patch, validate, expected=None):
     return result
 
 
+def prepare_button_icons(directory):
+    import blue
+    icons = {}
+    for name in set(BUTTON_ICONS.values()):
+        resource = 'cache:/evejs-controller/buttons/' + name + '.png'
+        destination = blue.paths.ResolvePathForWriting(resource)
+        folder = os.path.dirname(destination)
+        if not os.path.isdir(folder):
+            os.makedirs(folder)
+        with open(os.path.join(directory, 'assets', 'buttons', 'native', name + '.png'), 'rb') as stream:
+            content = stream.read(32769)
+        if len(content) > 32768 or not content.startswith(b'\x89PNG\r\n\x1a\n'):
+            raise ValueError('Invalid Controller Button Icon')
+        with open(destination, 'wb') as stream:
+            stream.write(content)
+        icons[name] = resource
+    return icons
+
+
 def display_binding(value):
     names = dict(LEFT_STICK='Left Stick', RIGHT_STICK='Right Stick',
                  LEFT_STICK_Y='Left Stick Up/Down', RIGHT_STICK_Y='Right Stick Up/Down',
@@ -87,12 +110,15 @@ class ControllerSettings(object):
         from carbonui.control.button import Button
         from carbonui.control.singlelineedits.singleLineEditText import SingleLineEditText
         from carbonui.primitives.container import Container
+        from carbonui.primitives.sprite import Sprite
         from eve.client.script.ui.control.eveLabel import EveLabelSmall
         from eve.client.script.ui.shared.systemMenu.systemMenuHeader import SystemMenuHeader
         import carbonui.const as const
         self.controller, self.api, self.cls, self.const = controller, api, SystemMenu, const
         self.native_selection, self.fallback = system_menu_selected_tab_setting, PANELID_CAMERA
         self.icon = prepare_icon(controller.directory)
+        self.button_icons = prepare_button_icons(controller.directory)
+        self.Sprite = Sprite
         self.Scroll, self.Combo, self.Checkbox, self.Slider = ScrollContainer, Combo, Checkbox, Slider
         self.Button, self.Edit, self.Container, self.Label, self.Header = Button, SingleLineEditText, Container, EveLabelSmall, SystemMenuHeader
         self.panels, self.widgets, self.connected, self.previous = [], {}, {}, {}
@@ -187,7 +213,10 @@ class ControllerSettings(object):
             self.slider(cell, *field)
 
     def button(self, parent, label, func, **kwargs):
-        return self.Button(parent=parent, label=label, func=func, align=self.const.TORIGHT, padLeft=6, **kwargs)
+        width = kwargs.pop('width', max(64, min(184, len(label) * 7 + 24)))
+        cell = self.Container(parent=parent, align=self.const.TORIGHT, width=width+6)
+        return self.Button(parent=cell, label=label, func=func, align=self.const.CENTER,
+                           width=width, fixedwidth=width, height=36, fixedheight=36, **kwargs)
 
     def choose_controller(self, combo, label, value):
         self.abort()
@@ -209,7 +238,10 @@ class ControllerSettings(object):
         self.widgets['selector'] = self.Combo(parent=row, align=self.const.TOLEFT, width=230, options=self.controller_options(), select=settings['controllerIndex'], callback=self.choose_controller)
         self.button(row, 'Identify Controller', self.identify)
         self.widgets['status'] = self.Label(parent=panel, align=self.const.TOTOP, text='Use A Controller Input To Identify Activity', padBottom=10)
-        self.widgets['cancel'] = self.Button(parent=panel, align=self.const.TOTOP, label='Cancel Input Detection', func=self.abort, display=bool(self.capture or self.identifying), padBottom=8)
+        cancel_row = self.row(panel)
+        self.widgets['cancel'] = cancel_row
+        cancel_row.display = bool(self.capture or self.identifying)
+        self.button(cancel_row, 'Cancel Input Detection', self.abort, width=184)
         self.Header(parent=panel, text='Camera', padTop=12)
         self.pair(panel, [('cameraSpeed','Pan Speed',100,4000,50),('cameraZoomSpeed','Zoom Speed',.1,3.,.1)])
         self.check(panel, 'invertCameraPan', 'Invert Camera Pan', 'Reverse Vertical Panning; Cursor Movement And Zoom Keep Their Direction')
@@ -265,8 +297,34 @@ class ControllerSettings(object):
         self.Label(parent=label_cell, align=self.const.TOTOP, padTop=4, maxLines=2, text=title, state=self.const.UI_DISABLED)
         inputs = self.Container(parent=row, align=self.const.TOALL)
         self.button(inputs, clear_label, clear, width=56 if clear_label=='Clear' else 68)
-        self.widgets[widget_key] = self.Button(parent=inputs, align=self.const.TOALL, padRight=12,
-                                               label=display_binding(value), hint=display_binding(value), func=capture)
+        self.widgets[widget_key] = self.input_button(inputs, value, capture)
+
+    def input_button(self, parent, value, callback, empty='Disabled'):
+        tokens = value.split('+') if value else []
+        icon_size = 26 if len(tokens)==4 else 30
+        width = len(tokens) * icon_size + max(0,len(tokens)-1) * 16 + (58 if tokens and tokens[-1].endswith('_Y') else 0)
+        button_width = max(120 if value or empty=='Disabled' else 160,min(224,width+24))
+        control = self.Button(parent=parent, align=self.const.CENTERLEFT, width=button_width, height=36,
+                              fixedwidth=button_width, fixedheight=36, label='' if value else empty,
+                              hint=display_binding(value) if value else empty, func=callback)
+        if not value:
+            return control
+        contents = self.Container(parent=control, align=self.const.CENTER, width=width, height=30,
+                                  state=self.const.UI_DISABLED)
+        left = 0
+        for index, token in enumerate(tokens):
+            if index:
+                self.Label(parent=contents, align=self.const.CENTERLEFT, left=left, width=16,
+                           text='+', state=self.const.UI_DISABLED, color=(1.,1.,1.,1.))
+                left += 16
+            self.Sprite(parent=contents, align=self.const.CENTERLEFT, left=left, width=icon_size, height=icon_size,
+                        texturePath=self.button_icons[BUTTON_ICONS[token]], state=self.const.UI_DISABLED,
+                        color=(1.,1.,1.,1.))
+            left += icon_size
+            if token.endswith('_Y'):
+                self.Label(parent=contents, align=self.const.CENTERLEFT, left=left+4, width=54,
+                           text='Up/Down', state=self.const.UI_DISABLED, color=(1.,1.,1.,1.))
+        return control
 
     def check(self, panel, key, title, hint=''):
         self.widgets[key] = self.Checkbox(parent=panel, align=self.const.TOTOP, text=title, checked=self.controller.settings[key], hint=hint,
@@ -310,10 +368,9 @@ class ControllerSettings(object):
         self.widgets['custom_action']=self.Label(parent=panel,align=self.const.TOTOP,text='',padTop=4,padBottom=12)
         row=self.row(panel,40)
         self.button(row,'Save Binding' if draft['id'] else 'Add Binding',self.add_custom,width=112)
-        self.widgets['custom_input']=self.Button(parent=row,align=self.const.TOALL,padRight=12,
-                                                label=display_binding(draft['controller']) if draft['controller'] else 'Choose Controller Input',func=self.capture_callback('custom:draft'))
+        self.widgets['custom_input']=self.input_button(row,draft['controller'],self.capture_callback('custom:draft'),'Choose Input')
         if draft['id']:
-            self.Button(parent=panel,align=self.const.TOTOP,label='Cancel Editing',func=self.reset_custom,padBottom=8)
+            self.button(self.row(panel),'Cancel Editing',self.reset_custom,width=128)
         self.refresh_custom_action()
 
     def custom_modifier(self,combo,label,value):

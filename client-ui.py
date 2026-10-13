@@ -137,6 +137,7 @@ def _ec_radial_open(uicore, target, controller):
     from eve.client.script.ui.shared.radialMenu.radialMenuActions import RadialMenuRangeAction, RadialMenuActioSecondLevel
     from carbonui.primitives.container import Container
     from carbonui.primitives.vectorlinetrace import VectorLineTrace
+    from carbonui.primitives.fill import Fill
     from eve.client.script.ui.control.eveLabel import EveLabelSmall
     from carbon.common.script.util.format import FmtDist
     import carbonui.const as constants
@@ -190,6 +191,17 @@ def _ec_radial_open(uicore, target, controller):
     range_axis = 'UP' in activation or 'DOWN' in activation
     cancel_glyph, cancel_mask = next((name, bit) for name, bit in (('B',0x2000),('A',0x1000),('X',0x4000),('Y',0x8000),('LS',0x40)) if name not in activation)
     try:
+        wheel_cursor = Container(parent=view, name='evejsControllerRadialCursor', align=constants.TOPLEFT,
+                                 width=28, height=28, state=constants.UI_DISABLED, idx=0)
+        for line_width, color in ((4.5,(0.,0.,0.,.85)),(2.,(1.,1.,1.,1.))):
+            ring = VectorLineTrace(parent=wheel_cursor, width=28, height=28, lineWidth=line_width,
+                                  state=constants.UI_DISABLED)
+            for index in range(49):
+                angle = index * _ec_math.pi / 24.
+                ring.AddPoint((14 + 11 * _ec_math.cos(angle),14 + 11 * _ec_math.sin(angle)),color=color)
+        Fill(parent=wheel_cursor, align=constants.TOPLEFT, left=12.5, top=12.5, width=3, height=3,
+             state=constants.UI_DISABLED, color=(1.,1.,1.,1.))
+        wheel_cursor.left, wheel_cursor.top = view.width / 2. - 14, view.height / 2. - 14
         hints = Container(parent=view, align=constants.TOPLEFT, left=(view.width - 320) / 2., top=view.height + 12,
                           width=320, height=54, state=constants.UI_DISABLED)
         for index, (glyph, label) in enumerate((('LS', 'Select'), ('RS' if range_axis else '', 'Range'), (cancel_glyph, 'Cancel'), (controller.settings['bindings']['leftClick'], 'Release'))):
@@ -221,6 +233,7 @@ def _ec_radial_open(uicore, target, controller):
             self.button, self.degree, self.more_started, self.expansion_degree = None, None, None, None
             self.range_direction, self.next_range = 0, 0.
             self.range_values = {}
+            self.cursor = wheel_cursor
 
         def valid(self):
             return not getattr(view, 'destroyed', False) and layer.radialMenu is view and _ec_radial_valid(uicore, target)
@@ -233,6 +246,14 @@ def _ec_radial_open(uicore, target, controller):
         def update(self, x, y, range_direction, now):
             if self.finished or not self.valid():
                 return
+            # The wheel owns a local cursor: absolute stick position inside a
+            # circle, rather than accumulated desktop cursor movement. No OS
+            # clipping or capture is installed, so physical input can take over.
+            magnitude = _ec_math.hypot(x, y)
+            divisor = max(1., magnitude)
+            radius = max(0., min(view.width, view.height) / 2. - 18)
+            wheel_cursor.left = view.width / 2. + x / divisor * radius - 14
+            wheel_cursor.top = view.height / 2. - y / divisor * radius - 14
             if _ec_math.hypot(x, y) < .04:
                 self.button, self.degree, self.more_started, self.expansion_degree = None, None, None, None
                 view.ResetFromCenter()

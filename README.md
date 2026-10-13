@@ -115,7 +115,7 @@ Hold **RB** over a targetable space bracket, overview entry, or locked-target ic
 
 | Control While Open | Action |
 | :--- | :--- |
-| <img src="assets/buttons/left-stick.svg" width="28" height="28" alt="Left Stick"> **Left Stick** | Select a wedge. Hold toward **More** to open its additional options. |
+| <img src="assets/buttons/left-stick.svg" width="28" height="28" alt="Left Stick"> **Left Stick** | Move the cursor within the wheel to select a wedge. Hold toward **More** to open its additional options. |
 | <img src="assets/buttons/dpad.svg" width="28" height="28" alt="D-Pad Up / Down"> **D-Pad Up / Down** | Increase / decrease the selected action's range. |
 | <img src="assets/buttons/rb.svg" width="28" height="28" alt="Right Bumper"> **Release Right Bumper** | Execute the highlighted action once. Center the left stick before releasing to cancel. |
 | <img src="assets/buttons/b.svg" width="28" height="28" alt="B"> **B** | Cancel immediately. |
@@ -159,7 +159,7 @@ In EVE, open **Settings → Controller**. Changes save and apply automatically.
 | **Controller** | Auto-detect or choose a connected device. **Identify Controller** selects the device you use next. |
 | **Camera** | Adjust pan/zoom speed and toggle **Invert Camera Pan** for vertical panning. |
 | **Cursor and Hold Timing** | Adjust precision, UI attraction, cursor appearance, and click/stop timing. |
-| **Bindings** | Rebind an action or clear its input. Conflicts show a confirmation before replacing the previous assignment. |
+| **Bindings** | Compact white button icons show each input or combination. Rebind an action or clear its input; conflicts show a confirmation before replacing the previous assignment. |
 | **Custom Bindings** | Choose a modifier and keyboard key, capture a controller button/combination, then select **Add Binding**. |
 | **Profiles** | Save, load, or delete named configurations; **Restore Defaults** restores the default controls and feel. |
 

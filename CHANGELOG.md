@@ -6,6 +6,8 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 
 ### Added
 
+- White controller button icons in native binding rows, including modifier combinations, stick axes, and custom inputs. Transparent client textures are exported from the matching SVG assets.
+- A visible, wheel-local radial cursor driven by absolute left-stick position and bounded to the circular menu, including full diagonal input. Physical mouse/keyboard takeover remains available.
 - Custom controller-to-EVE-shortcut bindings in the native Controller settings category, with modifier/key drop-downs, a resolved action preview, controller combination capture, editing/removal, and saved-profile support. No custom bindings are assigned by default.
 - Native EVE warning dialogs for controller binding conflicts, listing affected functions with **Replace Binding** and **Cancel**, defaulting to cancellation. Accepted replacements clear conflicting core inputs or remove conflicting custom entries; canceled replacements leave preferences unchanged.
 - Single-press custom shortcut dispatch through the native command map, preserving command availability checks, requiring a configured EVE shortcut, pinning its action identity, and cleaning up native combat command selection after dispatch to the selected object.
@@ -58,6 +60,7 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 
 ### Fixed
 
+- Fix native binding buttons rendering as thin strips by replacing fill alignment with explicit centered dimensions. Keep input, Clear/Remove, and editor buttons compact with consistent height.
 - Compare existing bindings again before saving an accepted replacement; reject concurrent edits instead of silently overwriting them. Preserve unrelated launcher preferences through atomic saves.
 - Suppress custom actions during Settings, capture, radial navigation, and input handover; cancel queued actions on focus/input/session/configuration changes and prevent held combinations from replaying after takeover.
 - Resolve radial targets only from the current native pick and recognized in-space target surfaces, with live ballpark, session, visibility, own-ship, and native non-targetable-group checks. Never fall back to a previously selected target or an object behind a window.

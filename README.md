@@ -119,7 +119,17 @@ Assigned active modules use a short trigger/button tap to toggle activation and 
 
 The banks and native gauge share one center axis. A centered utility strip includes cargo, scanners, tactical overlay, all three camera controls, autopilot, safety and HUD options, plus native zoom and weapon-group controls when available. The stock module rack stays hidden while the controller HUD is active. Undocking and native HUD rebuilds restore and reattach controls; an experimental HUD error falls back without stopping normal controller input.
 
-The feature is disabled by default while gameplay validation is pending. This first implementation supports assignment in space; docked fitting integration and broader viewport coverage remain in development. A viewport narrower than 1,280 logical UI pixels retains the original HUD. Turning the feature off or switching to mouse/keyboard restores the original HUD.
+EVE applies UI scaling to the native controls. Layout uses the resulting **logical UI size**, so a higher scale leaves less space even at the same screen resolution. Module sizes and assignments stay unchanged between layouts.
+
+| Usable UI Size | Layout |
+| :--- | :--- |
+| At Least 1,280 × 356 Logical Pixels | Wide banks beside the gauge. |
+| Otherwise, At Least 768 × 616 Logical Pixels | Compact banks with each bank's two diamonds stacked vertically. |
+| Neither Layout Fits | Original HUD; normal controller input remains available. |
+
+The complete HUD follows EVE's camera and saved HUD offsets, including top/bottom alignment. Near the screen edges, the assembly is kept inside the viewport with an eight-pixel logical margin. The camera offset and native HUD preferences are preserved. Resolution and UI-scale changes re-evaluate the layout automatically; changing layouts cancels pending module presses without changing assignments.
+
+The feature is disabled by default while gameplay validation is pending. This first implementation supports assignment in space; docked fitting integration remains in development. Turning the feature off or switching to mouse/keyboard restores the original HUD.
 
 </details>
 

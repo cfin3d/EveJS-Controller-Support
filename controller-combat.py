@@ -186,6 +186,7 @@ class _CombatHUD(object):
         self.root, self.ship, self.stock = None, None, None
         self.owned, self.moved, self.created = [], {}, []
         self.cells, self.prompts, self.arcs = [], [], []
+        self.bank_prompts = []
         self.identity, self.store, self.assignments, self.fitted = None, None, [None] * 16, {}
         self.gestures = _CombatGestures()
         self.epoch, self.last_scan, self.retry_at = 0, -1., 0.
@@ -197,6 +198,7 @@ class _CombatHUD(object):
         self.center, self.hud_parent = None, None
         self.pending_owners, self.retired_roots = [], []
         self.cleanup_failed = False
+        self.viewport = None
 
     def session_identity(self):
         session = getattr(_ch_builtins, 'session', None)
@@ -275,16 +277,23 @@ class _CombatHUD(object):
         name = resolver(self.c, token) if resolver else names.get(token, token.lower())
         return getattr(self.c.menu, 'button_icons', {}).get(name)
 
-    def build(self, ship, stock):
+    def viewport_layout(self):
+        # Carbon reports logical UI dimensions; its renderer applies UI/DPI
+        # scaling. Never apply Windows or EVE scaling a second time here.
+        x, y, width, height = self.c.ui.desktop.GetAbsolute()
+        if width >= 1280 and height >= 356:return min(1280, int(width)-16), 340, False
+        if width >= 768 and height >= 616:return min(800, int(width)-16), 600, True
+        return None
+
+    def build(self, ship, stock, viewport):
         api, ui = self.native_api(), self.c.ui
         k, Container, Sprite = api['const'], api['Container'], api['Sprite']
-        width = min(1280, int(ui.desktop.width) - 16)
-        if width < 1264:
-            raise ValueError('Combat HUD Needs A Wider Viewport')
+        width, height, compact = viewport
+        self.viewport = viewport
         self.ship, self.stock = ship, stock
         self.hud_parent = ship.hudContainer
-        self.root = Container(parent=self.hud_parent, name='evejsControllerCombatHUD', align=k.CENTERBOTTOM,
-                              width=width, height=340, top=0, state=k.UI_PICKCHILDREN, idx=0)
+        self.root = Container(parent=self.hud_parent, name='evejsControllerCombatHUD', align=k.TOPLEFT,
+                              width=width, height=height, top=0, state=k.UI_PICKCHILDREN, idx=0)
         # The existing 185x200 center owns the real gauges, compass and speed UI.
         center = self.own(ship.centerParent)
         self.center = center.node
@@ -296,11 +305,12 @@ class _CombatHUD(object):
         # hidden. Slot positions stay fixed when the sensor overlay toggles.
         inner, cluster_step = 236., 260.
         outer = inner + cluster_step
-        cluster_x = (-outer, -inner, inner, outer)
+        cluster_x = (-inner, -inner, inner, inner) if compact else (-outer, -inner, inner, outer)
+        cluster_y = (128., 388., 128., 388.) if compact else (128.,)*4
         for index in range(16):
             cluster, direction = index // 4, index % 4
             dx, dy = ((0, -62.5), (62.5, 0), (0, 62.5), (-62.5, 0))[direction]
-            cx, cy = width / 2. + cluster_x[cluster] + dx, 128. + dy
+            cx, cy = width / 2. + cluster_x[cluster] + dx, cluster_y[cluster] + dy
             cell = Container(parent=self.root, name='evejsCombatSlot%d' % index,
                              align=k.TOPLEFT, left=cx-32, top=cy-32, width=64, height=64,
                              state=k.UI_NORMAL, pickRadius=26, idx=0)
@@ -330,11 +340,12 @@ class _CombatHUD(object):
                               color=(.91, .64, .29, 1.), idx=0)
             arc.display = False
             self.arcs.append(arc)
-        for bank, offset in enumerate((-(inner+cluster_step/2.), inner+cluster_step/2.)):
+        for bank, offset in enumerate((-inner, inner) if compact else (-(inner+cluster_step/2.), inner+cluster_step/2.)):
             path = self.icon('LT' if bank == 0 else 'RT')
             if path:
-                Sprite(parent=self.root, align=k.TOPLEFT, left=width/2.+offset-16,
-                       top=14, width=32, height=32, texturePath=path, state=k.UI_DISABLED)
+                if compact:offset += -100 if bank==0 else 100
+                self.bank_prompts.append(Sprite(parent=self.root, align=k.TOPLEFT, left=width/2.+offset-16,
+                       top=14, width=32, height=32, texturePath=path, state=k.UI_DISABLED))
         self.own(stock).node.display = False
         self.hidden.append(stock)
         toggle = getattr(ship, 'moduleToggleCont', None)
@@ -349,6 +360,8 @@ class _CombatHUD(object):
         self.own(ship.hudButtons, False).hook('construct_buttons', self.rebuild_guard(ship.hudButtons.construct_buttons))
         if callable(getattr(ship, 'UpdateButtonPositions', None)):
             self.own(ship, False).hook('UpdateButtonPositions', self.position_guard(ship.UpdateButtonPositions))
+        if callable(getattr(ship, 'UpdatePosition', None)):
+            self.own(ship, False).hook('UpdatePosition', self.position_guard(ship.UpdatePosition))
         self.layout()
         self.epoch += 1
 
@@ -362,7 +375,9 @@ class _CombatHUD(object):
     def position_guard(self, native):
         def position(*args, **kwargs):
             result = native(*args, **kwargs)
-            if _ch_alive(self.root):self.layout()
+            if _ch_alive(self.root):
+                if self.viewport_layout()!=self.viewport:self.detach(self.gestures.previous)
+                else:self.layout()
             return result
         return position
 
@@ -371,24 +386,32 @@ class _CombatHUD(object):
             if _ch_alive(node):node.display = False
 
     def layout(self):
-        # The native HUD container already carries camera/user offsets. Sharing
-        # that parent keeps the banks and real gauge on one center axis.
+        # Follow the native HUD's camera/user offset as a single assembly. Clamp
+        # only our presentation; never rewrite the native offset or preference.
         k, width = self.api['const'], self.root.width
-        self.root.left = 0
+        dx, dy, dw, dh = self.c.ui.desktop.GetAbsolute()
+        px, py, pw, ph = self.hud_parent.GetAbsolute()
+        x = px+(pw-width)/2.
+        top_aligned = self.hud_parent.align == getattr(k, 'CENTERTOP', None)
+        y = py if top_aligned else py+ph-self.root.height
+        x = max(dx+8., min(dx+dw-8.-width, x))
+        y = max(dy+8., min(dy+dh-8.-self.root.height, y))
+        self.root.left, self.root.top = x-px, y-py
         self.center.align = k.TOPLEFT
-        self.center.left, self.center.top = (width-self.center.width)/2., 28
+        compact = self.viewport[2]
+        self.center.left, self.center.top = (width-self.center.width)/2., 158 if compact else 28
         widgets = [widget for widget in self.utilities if _ch_alive(widget) and getattr(widget, 'display', True)]
         total = sum(widget.width for widget in widgets) + max(0, len(widgets)-1)*12.
         left = (width-total)/2.
         for widget in widgets:
             widget.align = k.TOPLEFT
-            widget.left, widget.top = left, 292-widget.height/2.
+            widget.left, widget.top = left, (552 if compact else 292)-widget.height/2.
             left += widget.width+12.
         self.enforce_visibility()
 
     def rebuild_guard(self, native):
         def rebuild(*args, **kwargs):
-            self.detach()
+            self.detach(self.gestures.previous)
             return native(*args, **kwargs)
         return rebuild
 
@@ -724,15 +747,18 @@ class _CombatHUD(object):
                 return self.filtered(pad)
             ship, stock, fitted = snapshot
             identity = self.session_identity()
-            width = min(1280, int(self.c.ui.desktop.width)-16)
+            viewport = self.viewport_layout()
+            if viewport is None:
+                self.detach(mask)
+                return self.filtered(pad)
             if (self.identity != identity or self.ship is not ship or self.stock is not stock or
                     self.center is not ship.centerParent or self.hud_parent is not ship.hudContainer or
-                    not _ch_alive(self.root) or self.root.width != width):
+                    not _ch_alive(self.root) or self.viewport != viewport):
                 self.detach(self.gestures.previous)
                 if self.pending_owners or self.retired_roots:return self.filtered(pad)
                 self.identity, self.store = identity, self.profile(identity)
                 stage = 'Native HUD Attachment'
-                self.build(ship, stock)
+                self.build(ship, stock, viewport)
             self.fitted = fitted
             self.assignments = self.store.reconcile(identity[1], fitted, True)
             signature = tuple((value['itemID'], value['typeID'], id(self.native_button(value['itemID'])))
@@ -816,9 +842,11 @@ class _CombatHUD(object):
         root, owned, created = self.root, self.owned, self.created
         self.root, self.ship, self.stock = None, None, None
         self.center, self.hud_parent = None, None
+        self.viewport = None
         self.owned, self.created = [], []
         self.utilities, self.hidden = [], []
         self.cells, self.prompts, self.arcs = [], [], []
+        self.bank_prompts = []
         self.parent_orders = {}
         self.signature = None
         if _ch_alive(root):

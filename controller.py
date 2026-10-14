@@ -22,7 +22,7 @@ BUTTONS = [('LT', 0x10000), ('RT', 0x20000), ('LB', LB), ('RB', RB),
 BUTTONS += [('R4',1<<18),('L4',1<<19),('R5',1<<20),('L5',1<<21),('TOUCHPAD',1<<22),
             ('MISC1',1<<23),('MISC2',1<<24),('MISC3',1<<25),('MISC4',1<<26),('MISC5',1<<27),('MISC6',1<<28),('GUIDE',1<<29)]
 BUTTON_BITS = dict(BUTTONS)
-ACTIONS = [('cursor', 'Move Cursor'), ('cameraPan', 'Pan Camera'),
+ACTIONS = [('cursor', 'Move Cursor'), ('cameraPan', 'Pan Camera / Focused UI'),
            ('cameraZoom', 'Zoom Camera'), ('leftClick', 'Left-Click / Target Radial'),
            ('rightClick', 'Right-Click'), ('fly', 'Fly Toward Camera Center'), ('stop', 'Stop Ship'),
            ('neocom', 'Open Neocom'), ('closeWindow', 'Close Focused Window')]
@@ -840,6 +840,7 @@ class Controller(object):
         self.radial_available = '_ec_radial_open' in helpers
         self.custom_down, self.custom_epoch = set(), 0
         self.window_close=WindowCloseGesture(self)
+        self.ui_navigation = {}
         self.feedback = None
         self.combat = None
         self.combat_gate = 0
@@ -888,6 +889,7 @@ class Controller(object):
 
     def cancel(self):
         try:
+            self.ui_navigation.clear()
             if self.combat:
                 pad = self.mode.previous
                 try:self.combat.detach(input_mask(pad, self.settings) if pad else 0)
@@ -1141,8 +1143,10 @@ class Controller(object):
         self.native.buttons(held)
         rx, ry = axes('cameraPan', pad, self.settings)
         zx, zy = axes('cameraZoom', pad, self.settings)
+        ui_navigation = self.helpers.get('_ec_ui_navigate')
+        ui_owned = bool(ui_navigation(self,rx,ry,zy,dt)) if ui_navigation else False
         session = getattr(_builtins, 'session', None)
-        if not settings_open and (rx or ry or zy) and session is not None and getattr(session, 'charid', None):
+        if not ui_owned and not settings_open and (rx or ry or zy) and session is not None and getattr(session, 'charid', None):
             sm = getattr(_builtins, 'sm', None)
             scene = sm.GetService('sceneManager') if sm else None
             camera = scene.GetActiveCamera() if scene else None
@@ -1157,9 +1161,9 @@ class Controller(object):
                     orbit(rx * self.settings['cameraSpeed'] * dt * .005, ry * (1 if self.settings['invertCameraPan'] else -1) * self.settings['cameraSpeed'] * dt * .005)
                 if zy and callable(zoom):
                     zoom(-zy * self.settings['cameraZoomSpeed'] * dt)
-        if action and not settings_open:
+        if action and not settings_open and not ui_owned:
             print('EVEJS_CONTROLLER:' + self.helpers['_ec_navigation'](action, self.ui, self.dispatch_rpc))
-        if settings_open:
+        if settings_open or ui_owned:
             self.gestures.pause_navigation(pad, self.settings)
             stop, stop_fill = False, 0.
         self.overlay.update(True, self.settings['cursorRing'], snapped, fills, stop, stop_fill, dt)

@@ -126,6 +126,138 @@ def _ec_window_close_invoke(gesture,attempt):
     except Exception:gesture.finish(attempt,False)
 
 
+def _ec_ui_under(node, owner):
+    for unused in range(32):
+        if node is owner:return True
+        if node is None:return False
+        node=getattr(node,'parent',None)
+    return False
+
+
+def _ec_ui_scroll_kind(ui, node):
+    ancestor=node
+    for unused in range(32):
+        if ancestor is ui.desktop:break
+        if ancestor is None or getattr(ancestor,'destroyed',False) or not getattr(ancestor,'display',True) or getattr(ancestor,'state',0) in (1,2):return None
+        ancestor=getattr(ancestor,'parent',None)
+    else:return None
+    if callable(getattr(node,'ScrollMoveVertical',None)) and not getattr(node,'scrollbarsDisabled',False):
+        for axis in ('Vertical','Horizontal'):
+            visible=getattr(node,'Is'+axis+'ScrollBarVisible',None)
+            if callable(visible) and visible():return 'container'
+    if (getattr(node,'scrollEnabled',False) and getattr(node,'scrollingRange',0)>0 and
+            callable(getattr(node,'GetScrollProportion',None)) and callable(getattr(node,'ScrollToProportion',None))):return 'list'
+    return None
+
+
+def _ec_ui_scroll_path(ui, node, owner):
+    if not _ec_ui_under(node,owner):return None
+    for unused in range(32):
+        if _ec_ui_scroll_kind(ui,node):return node
+        if node is owner:break
+        node=getattr(node,'parent',None)
+    return None
+
+
+def _ec_ui_scroll(ui, node, x, y, state):
+    kind=_ec_ui_scroll_kind(ui,node)
+    if kind=='container':
+        for axis,delta in (('Vertical',y),('Horizontal',x)):
+            visible=getattr(node,'Is'+axis+'ScrollBarVisible',None)
+            move=getattr(node,'ScrollMove'+axis,None)
+            extent=getattr(node,'_get_scrollable_'+('height' if axis=='Vertical' else 'width'),None)
+            if delta and callable(visible) and visible() and callable(move) and callable(extent):
+                size=extent()
+                if size>0:move(delta/float(size))
+    elif kind=='list':
+        # Legacy Scroll stores integer pixels. Accumulate small stick motion
+        # rather than losing subpixel movement at low deflection.
+        if state.get('pane') is not node:state['tail']=0.
+        tail=state.get('tail',0.)
+        if not y or y*tail<0:tail=0.
+        amount=y+tail;whole=int(amount);state['tail']=amount-whole
+        if whole:
+            if hasattr(node,'stickToBottom'):node.stickToBottom=False
+            node.ScrollToProportion(node.GetScrollProportion()+whole/float(node.scrollingRange),threaded=False)
+    state['pane']=node
+
+
+def _ec_ui_navigate(controller, x, y, zoom, dt):
+    ui,state=controller.ui,controller.ui_navigation
+    owner=None
+    try:
+        if not controller.active or controller.mode.mode!='controller' or not controller.native.foreground():state.clear();return False
+        modal=ui.registry.GetModalWindow()
+        menus=_ec_active_menus(ui) if modal is None else []
+        if modal is not None:owner=modal
+        elif menus:
+            hovered=getattr(ui.uilib,'mouseOver',None)
+            owner=next((menu for menu in menus if _ec_ui_under(hovered,menu)),menus[0])
+        else:owner,unused=_ec_window_close_owner(ui)
+        if owner is None or owner is getattr(ui,'desktop',None):state.clear();return False
+        selected=getattr(owner,'GetActiveWindow',None)
+        if callable(selected):owner=selected() or owner
+        if (owner is None or not _ec_radial_visible(ui,owner) or getattr(owner,'state',0) in (1,2) or
+                getattr(owner,'closing',False) or callable(getattr(owner,'IsMinimized',None)) and owner.IsMinimized()):
+            state.clear();return False
+        if state.get('owner') is not owner:state.clear();state['owner']=owner
+        # Focus owns the stick even at an edge or during a transient load. Never
+        # fall through from a focused menu to the ship camera or flight actions.
+        if (getattr(getattr(_ec_builtins,'session',None),'mutating',False) or getattr(ui,'dragObject',None) is not None or
+                getattr(controller.native,'owned',None) or getattr(controller.native,'physical_buttons',None) or getattr(controller.native,'pending',False)):
+            state.pop('tail',None);return True
+        if not (x or y or zoom):state.pop('tail',None);state.pop('zoom',None);return True
+        speed=controller.settings['cameraSpeed']*max(0.,min(.05,dt))
+        pane=None
+        for candidate in (getattr(ui.uilib,'mouseOver',None),getattr(ui.registry,'GetFocus',lambda:None)()):
+            pane=_ec_ui_scroll_path(ui,candidate,owner)
+            if pane is not None:break
+        # Ship Tree's native PanContainer applies its scale and boundary rules.
+        pan=getattr(owner,'panCont',None)
+        view=getattr(owner,'mapView',None)
+        navigation=getattr(view,'mapNavigation',None)
+        camera_controller=getattr(navigation,'cameraController',None)
+        if pane is None and pan is not None and callable(getattr(pan,'Pan',None)) and _ec_radial_visible(ui,pan):
+            if zoom:
+                direction=1 if zoom>0 else -1
+                if state.get('zoom')!=direction and callable(getattr(owner,'OnZoom',None)):owner.OnZoom(-direction)
+                state['zoom']=direction
+            else:
+                state.pop('zoom',None)
+                factor=getattr(pan,'panAmount',1.)/max(.001,getattr(pan,'scale',1.))
+                if x or y:pan.Pan(-x*speed*factor,y*speed*factor)
+            return True
+        if pane is None and camera_controller is not None and _ec_radial_visible(ui,view):
+            camera=camera_controller.GetCamera()
+            if camera is not None:
+                if x or y:
+                    factor=camera_controller.kPan*speed
+                    camera.Pan(x*factor,y*factor,0)
+                if zoom:camera.Zoom(-zoom*controller.settings['cameraZoomSpeed']*max(0.,min(.05,dt)))
+            return True
+        if pane is None:
+            previous=state.get('pane')
+            if _ec_ui_under(previous,owner) and _ec_ui_scroll_kind(ui,previous):pane=previous
+        if pane is None:
+            pending=[owner];seen=set();candidates=[]
+            for unused in range(256):
+                if not pending:break
+                node=pending.pop(0)
+                if id(node) in seen or not _ec_radial_visible(ui,node) or getattr(node,'state',0) in (1,2):continue
+                seen.add(id(node))
+                if _ec_ui_scroll_kind(ui,node):
+                    bx,by,bw,bh=node.GetAbsolute();candidates.append((bw*bh,len(candidates),node));continue
+                pending.extend(list(getattr(node,'children',())))
+            if candidates:pane=max(candidates)[2]
+        if pane is not None:_ec_ui_scroll(ui,pane,x*speed,-(y or zoom)*speed,state)
+        return True
+    except Exception as error:
+        if not state.get('failed'):
+            print('EVEJS_CONTROLLER:Focused UI navigation unavailable: '+type(error).__name__)
+            state['failed']=True
+        return owner is not None
+
+
 def _ec_hover_target(uicore):
     return _ec_target_bounds(uicore, getattr(getattr(uicore, 'uilib', None), 'mouseOver', None))
 

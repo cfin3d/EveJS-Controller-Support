@@ -198,7 +198,7 @@
       },
       {
         "id": "cameraSpeed",
-        "label": "Camera Pan Speed",
+        "label": "Camera / UI Pan Speed",
         "type": "integer",
         "default": 800,
         "file": "preferences",
@@ -209,7 +209,8 @@
         "group": "Controller Feel",
         "minimum": 100,
         "maximum": 4000,
-        "step": 50
+        "step": 50,
+        "description": "Controls camera panning, focused-window scrolling and Map/Ship Tree panning. UI scrolling is independent of camera inversion."
       },
       {
         "id": "cursorRing",

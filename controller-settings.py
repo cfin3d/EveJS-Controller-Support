@@ -286,7 +286,7 @@ class ControllerSettings(object):
         cancel_row.display = bool(self.capture or self.identifying)
         self.button(cancel_row, 'Cancel Input Detection', self.abort, width=184)
         self.Header(parent=panel, text='Camera', padTop=12)
-        self.pair(panel, [('cameraSpeed','Pan Speed',100,4000,50),('cameraZoomSpeed','Zoom Speed',.1,3.,.1)])
+        self.pair(panel, [('cameraSpeed','Pan / Scroll Speed',100,4000,50),('cameraZoomSpeed','Zoom Speed',.1,3.,.1)])
         self.check(panel, 'invertCameraPan', 'Invert Camera Pan', 'Reverse Vertical Panning; Cursor Movement And Zoom Keep Their Direction')
         self.Header(parent=panel, text='Cursor', padTop=12)
         self.pair(panel, [('deadzone','Stick Deadzone',.05,.5,.01),('cursorSpeed','Cursor Speed (px/s)',100,4000,50)])

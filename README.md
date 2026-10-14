@@ -142,12 +142,21 @@ The feature is disabled by default while gameplay validation is pending. This fi
 | <img src="assets/buttons/rb.svg" width="28" height="28" alt="Right Bumper"> **Right Bumper** | Hold **0.5 seconds** over a target to open its radial menu. On normal UI, hold for left-click and continue holding to drag. |
 | <img src="assets/buttons/view.svg" width="28" height="28" alt="Select / View"> **Select / View** | Open controller navigation in the Neocom menu. |
 | <img src="assets/buttons/b.svg" width="28" height="28" alt="B"> **B — Hold, Then Release** | Move to the focused window's X; release after **one second** to close it. Release early to cancel and return the cursor. |
-| <img src="assets/buttons/right-stick.svg" width="28" height="28" alt="Right Stick"> **Right Stick** | Pan/rotate the camera in space or while docked. |
+| <img src="assets/buttons/right-stick.svg" width="28" height="28" alt="Right Stick"> **Right Stick** | Scroll the focused window, pan a focused Map/Ship Tree, or pan/rotate the camera when no menu is focused. |
 | <img src="assets/buttons/lt.svg" width="28" height="28" alt="Left Trigger"> <img src="assets/buttons/right-stick.svg" width="28" height="28" alt="Right Stick"> **Hold Left Trigger + Right Stick** | Move **up** to zoom in or **down** to zoom out. Release the trigger to resume panning. |
 | <img src="assets/buttons/right-stick.svg" width="28" height="28" alt="Right Stick Press"> **Right Stick — Short Press** | Release before one second to fly toward camera center. |
 | <img src="assets/buttons/right-stick.svg" width="28" height="28" alt="Right Stick Hold"> **Right Stick — Hold** | Hold **one second** to request stop. |
 
 These are the default bindings. Release a bumper early to cancel its click. A long right-stick hold stops the ship without first issuing flight.
+
+### Focused Window Navigation
+
+- **Right Stick Up/Down:** scroll the focused window's list or scrollbar. Move left/right for a pane with a horizontal scrollbar. No activation hold is required.
+- **Map / Ship Tree:** pan in all directions. Hold **LT + Right Stick Up/Down** to zoom the focused view; Ship Tree retains its native two zoom levels.
+- **Multiple Panes:** the pane under the cursor takes priority within the focused window, followed by keyboard focus and the last used pane. The cursor stays where it is.
+- **Priority:** Neocom and radial controls retain their own navigation. Dragging and input detection pause scrolling. A focused menu owns the stick even at a scroll boundary; camera-center flight and stop stay inactive until focus returns to the game view.
+
+Adjust **Pan / Scroll Speed** in **Settings → Controller → Camera**. Existing camera-pan and zoom bindings apply to focused UI navigation as well. Camera inversion affects the game camera; UI scrolling keeps its normal direction.
 
 ### Close Focused Windows
 

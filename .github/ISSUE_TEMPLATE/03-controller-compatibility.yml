@@ -71,7 +71,7 @@ body:
     id: tested-functions
     attributes:
       label: Tested Functions and Results
-      description: List each function as Worked, Failed, or Not Tested. Optional checklist below; replace it with the tests you actually performed. Basic support does not imply gyro, touch gestures, or advanced haptics.
+      description: List functions as Worked, Failed, or Not Tested. For feedback, use Test Vibration and report the displayed output status and whether Enhanced DualSense Haptics was enabled. Basic input results do not verify enhanced haptics.
       placeholder: |
         Detection and Device Selection:
         Cursor / Click Holds / Dragging / Attraction:
@@ -81,6 +81,7 @@ body:
         Neocom D-Pad / A-B Holds / Submenus:
         Button Icons / Custom Binding Capture:
         Exposed Rear Buttons or Touchpad Click:
+        Test Vibration / Damage Feedback / Enhanced DualSense Haptics:
         Mouse-Keyboard Switching / Reconnection:
     validations:
       required: true

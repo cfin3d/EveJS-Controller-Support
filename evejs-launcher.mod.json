@@ -3,7 +3,7 @@
   "id": "evejs-controller",
   "displayName": "EveJS Controller",
   "version": "0.1.0",
-  "description": "Controller support inside the EVE client with automatic controller and mouse/keyboard switching, analog cursor precision, hold-to-click, native Controller settings, camera pan/zoom and camera-center ship navigation.",
+  "description": "Controller support inside the EVE client with automatic input switching, precision cursor and menu navigation, native Controller settings, camera/ship controls, combat vibration and optional DualSense USB haptics.",
   "kind": "loader",
   "supportedBackends": [
     "native",
@@ -344,6 +344,101 @@
         "maximum": 240,
         "step": 5,
         "advanced": true
+      },
+      {
+        "id": "vibrationEnabled",
+        "label": "Enable Vibration",
+        "type": "boolean",
+        "default": true,
+        "file": "preferences",
+        "key": [
+          "vibrationEnabled"
+        ],
+        "restart": "none",
+        "group": "Vibration",
+        "description": "Master toggle. Disabling stops controller feedback immediately."
+      },
+      {
+        "id": "vibrationStrength",
+        "label": "Overall Strength",
+        "type": "number",
+        "default": 0.65,
+        "file": "preferences",
+        "key": [
+          "vibrationStrength"
+        ],
+        "restart": "none",
+        "group": "Vibration",
+        "minimum": 0,
+        "maximum": 1,
+        "step": 0.05
+      },
+      {
+        "id": "damageVibration",
+        "label": "Incoming Damage Feedback",
+        "type": "boolean",
+        "default": true,
+        "file": "preferences",
+        "key": [
+          "damageVibration"
+        ],
+        "restart": "none",
+        "group": "Vibration"
+      },
+      {
+        "id": "destructionVibration",
+        "label": "Ship Destruction Feedback",
+        "type": "boolean",
+        "default": true,
+        "file": "preferences",
+        "key": [
+          "destructionVibration"
+        ],
+        "restart": "none",
+        "group": "Vibration"
+      },
+      {
+        "id": "damageVibrationStrength",
+        "label": "Damage Strength",
+        "type": "number",
+        "default": 0.8,
+        "file": "preferences",
+        "key": [
+          "damageVibrationStrength"
+        ],
+        "restart": "none",
+        "group": "Vibration",
+        "minimum": 0,
+        "maximum": 1,
+        "step": 0.05
+      },
+      {
+        "id": "destructionVibrationStrength",
+        "label": "Destruction Strength",
+        "type": "number",
+        "default": 1,
+        "file": "preferences",
+        "key": [
+          "destructionVibrationStrength"
+        ],
+        "restart": "none",
+        "group": "Vibration",
+        "minimum": 0,
+        "maximum": 1,
+        "step": 0.05
+      },
+      {
+        "id": "dualsenseHaptics",
+        "label": "Enhanced DualSense Haptics (USB)",
+        "type": "boolean",
+        "default": false,
+        "file": "preferences",
+        "key": [
+          "dualsenseHaptics"
+        ],
+        "restart": "none",
+        "group": "Vibration",
+        "description": "Connect DualSense directly via USB for detailed feedback. Uses standard vibration when enhanced output is unavailable. Physical hardware testing is pending."
       }
     ]
   }

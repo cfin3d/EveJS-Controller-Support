@@ -42,6 +42,7 @@
 - **Camera and Ship Navigation:** pan, zoom, fly toward camera center, and stop.
 - **Controller Settings:** select a device, customize bindings, and save profiles in EVE's settings menu.
 - **Controller Families:** PlayStation and Steam input paths, with automatic white button icons and a manual style override.
+- **Combat Feedback:** distinct damage vibrations and ship-destruction feedback, with adjustable strength and optional detailed DualSense USB haptics.
 - **Automatic Input Switching:** move freely between controller and mouse/keyboard controls.
 - **In-Game Runtime:** starts at login; no separate application or tray icon.
 
@@ -65,7 +66,7 @@ PlayStation/Steam hardware and SteamOS/Proton compatibility need community testi
 - **Steam Deck / Steam Controller:** use gamepad output when launching through Steam Input. On controllers using a trackpad for right-stick functions, map that trackpad to the right joystick in the Steam controller layout.
 - **Button Icons:** **Auto-Detect** follows the active detected controller. Steam Input and other mappers may expose a virtual Xbox device; choose **PlayStation 4**, **PlayStation 5**, or **Steam** manually in **Settings → Controller** when needed.
 - **Multiple Controllers:** Auto-Detect follows controller activity. Use **Identify Controller** or choose a named slot to keep one device selected. Up to 16 connected slots are available; identify it again if connection order changes between sessions.
-- **Extra Inputs:** independently exposed rear buttons and touchpad clicks can be captured in custom bindings. Inputs mapped to ordinary buttons share those bindings. Motion controls, touch gestures, and adaptive-trigger/haptic effects are not implemented.
+- **Extra Inputs:** independently exposed rear buttons and touchpad clicks can be captured in custom bindings. Inputs mapped to ordinary buttons share those bindings. Motion controls, touch gestures, and adaptive-trigger resistance are not implemented.
 - **Feedback:** report the controller model, USB/Bluetooth/Steam Input connection, operating system/Proton version, detected device name, and affected action in [Issues](https://github.com/cfin3d/EveJS-Controller-Support/issues).
 
 </details>
@@ -199,9 +200,36 @@ In EVE, open **Settings → Controller**. Changes save and apply automatically.
 | **Button Icons** | Automatically match the active device, or choose Xbox, PlayStation 4/5, or Steam when a mapper hides its identity. |
 | **Camera** | Adjust pan/zoom speed and toggle **Invert Camera Pan** for vertical panning. |
 | **Cursor and Hold Timing** | Adjust precision, UI attraction, cursor appearance, and click/stop timing. |
+| **Vibration** | Enable/disable all feedback, adjust overall and event strengths, toggle damage/destruction effects, and test or stop vibration. |
 | **Bindings** | Compact white button icons show each input or combination. Rebind an action or clear its input; conflicts show a confirmation before replacing the previous assignment. |
 | **Custom Bindings** | Choose a modifier and keyboard key, capture a controller button/combination, then select **Add Binding**. |
 | **Profiles** | Save, load, or delete named configurations; **Restore Defaults** restores the default controls and feel. |
+
+### Vibration Feedback
+
+In **Settings → Controller → Vibration**, use **Enable Vibration** as the master toggle. **Test Vibration** previews enabled patterns on the selected controller; **Stop Vibration** ends the preview. No gameplay action is required to test it.
+
+| Event | Feedback |
+| :--- | :--- |
+| **Laser Damage** | Light, brief buzzing. |
+| **Projectile / Hybrid Damage** | Medium, sharp impacts. |
+| **Missile Damage** | A heavier, deeper impact with a fading tail. |
+| **Other / Unidentified Damage** | A moderate fallback pulse. |
+| **Your Ship Explodes** | A strong burst followed by a diminishing rumble. |
+
+Only incoming damage to the ship you are currently piloting activates combat feedback. **Your drones, fighter squadrons, deployables, structures, and other owned objects do not trigger it**, including when they are destroyed. Rapid hits blend with capped intensity; your ship's destruction takes priority. Mouse/keyboard takeover, focus loss, disconnection, disabling the mod, or disabling vibration cancels combat playback. A settings preview also ends when you leave the Controller category or start input detection.
+
+<details>
+<summary><strong>Enhanced DualSense Haptics and Testing</strong></summary>
+
+- **Enable:** connect a Sony DualSense or DualSense Edge directly by USB, then enable **Enhanced DualSense Haptics (USB)**. The option is off by default; the detailed output path remains experimental pending physical-device feedback.
+- **Detailed Patterns:** independently authored waveforms use the controller's two haptic audio channels. The audible channels remain silent, and the mod does not change your default audio device or route game sound through the controller.
+- **Matching:** requires one detected Sony controller and one recognized four-channel controller audio endpoint. Wireless connections, hidden/virtual device identities, ambiguous devices, or unavailable endpoints use standard vibration where supported.
+- **Status:** the Vibration label reports the last tested output path, including **Enhanced DualSense Haptics (USB)**, standard fallback, or unavailable vibration. Selecting PlayStation button icons alone does not enable DualSense hardware features.
+- **Test:** previews laser, projectile, missile, then destruction patterns when their options are enabled. Strength settings apply to both standard and enhanced output. Turning **Enable Vibration** off stops an active effect immediately in the game settings; external launcher changes apply when the client refreshes its configuration.
+- **Coverage:** hardware feel, firmware differences, USB/Bluetooth vibration, and SteamOS/Proton output need community testing. Adaptive-trigger resistance is not included. Share the connection, toggles, strengths, displayed Vibration status, and affected pattern in a [Compatibility Report](https://github.com/cfin3d/EveJS-Controller-Support/issues/new?template=03-controller-compatibility.yml).
+
+</details>
 
 <details>
 <summary><strong>Defaults and Binding Capture</strong></summary>
@@ -216,6 +244,9 @@ In EVE, open **Settings → Controller**. Changes save and apply automatically.
 | Invert Camera Pan | Off |
 | Click Hold | 500 ms |
 | Right Stick Stop Hold | 1,000 ms |
+| Vibration | On |
+| Overall / Damage / Destruction Strength | 65% / 80% / 100% |
+| Enhanced DualSense Haptics | Off |
 | Circular Cursor | On |
 | UI Attraction | On |
 

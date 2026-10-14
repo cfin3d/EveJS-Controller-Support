@@ -32,6 +32,7 @@ body:
         - Controller Settings or Profiles
         - Bindings or Custom Shortcuts
         - Button Icons or Input Mode Switching
+        - Vibration or Haptic Feedback
         - Performance or Crash
         - Other
     validations:
@@ -115,7 +116,7 @@ body:
     id: input-setup
     attributes:
       label: Input Setup and Controller Settings
-      description: Name Steam Input or other input software (or say Not Used), the detected controller and Input Backend in Settings → Controller, selected device/icon style, relevant bindings and hold timings, and other connected controllers.
+      description: Name input software (or Not Used), the detected device/backend, relevant bindings/settings, and other controllers. For vibration, include enabled toggles, strengths, displayed Vibration status after Test Vibration, and the affected pattern.
       placeholder: |
         Input Software and Layout:
         Detected Device / Input Backend:

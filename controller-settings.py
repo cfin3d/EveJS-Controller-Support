@@ -17,7 +17,9 @@ BUTTON_ICONS.update((name,name.lower()) for name in ('R4','L4','R5','L5','TOUCHP
 PS_ICON_FILES=('cross','circle','square','triangle','l1','r1','l2','r2','l3','r3','create','share','select','start','options','ps','touchpad')
 PROFILE_KEYS = ('bindings', 'customBindings', 'controllerIcons', 'deadzone', 'cursorSpeed', 'cameraSpeed', 'cameraZoomSpeed',
                 'invertCameraPan', 'cursorRing', 'cursorSnap', 'snapRadius', 'snapMaxSpeed',
-                'clickHoldMilliseconds', 'rightStickStopMilliseconds', 'triggerThreshold')
+                'clickHoldMilliseconds', 'rightStickStopMilliseconds', 'triggerThreshold',
+                'vibrationEnabled','vibrationStrength','damageVibration','destructionVibration',
+                'damageVibrationStrength','destructionVibrationStrength','dualsenseHaptics')
 
 
 def prepare_icon(directory):
@@ -203,6 +205,7 @@ class ControllerSettings(object):
             self.controller.cancel()
             self.controller.mode.reset()
             self.controller.settings = result
+            if getattr(self.controller,'feedback',None):self.controller.feedback.stop()
             self.rendered_settings = result
             if rebuild:
                 self.rebuild()
@@ -293,6 +296,17 @@ class ControllerSettings(object):
         self.Header(parent=panel, text='Hold Timing', padTop=12)
         self.pair(panel, [('clickHoldMilliseconds','Click / Activation Hold (ms)',200,2000,50),('rightStickStopMilliseconds','Stop Hold (ms)',500,3000,100)])
         self.pair(panel, [('triggerThreshold','Trigger Activation',10,240,5)])
+        self.Header(parent=panel,text='Vibration',padTop=12)
+        self.check(panel,'vibrationEnabled','Enable Vibration','Turn All Controller Feedback On Or Off')
+        self.pair(panel,[('vibrationStrength','Overall Strength',0.,1.,.05)])
+        self.check(panel,'damageVibration','Incoming Damage Feedback')
+        self.check(panel,'destructionVibration','Ship Destruction Feedback')
+        self.pair(panel,[('damageVibrationStrength','Damage Strength',0.,1.,.05),('destructionVibrationStrength','Destruction Strength',0.,1.,.05)])
+        self.check(panel,'dualsenseHaptics','Enhanced DualSense Haptics (USB)','Connect A DualSense Directly By USB For Detailed Feedback; Uses Standard Vibration If Enhanced Output Is Unavailable')
+        row=self.row(panel)
+        self.button(row,'Stop Vibration',self.stop_vibration,width=120)
+        self.button(row,'Test Vibration',self.test_vibration,width=120)
+        self.widgets['feedback_status']=self.Label(parent=panel,align=self.const.TOTOP,text=self.feedback_status(),padBottom=8,state=self.const.UI_DISABLED)
         self.Header(parent=panel, text='Bindings', padTop=12)
         self.Label(parent=panel, align=self.const.TOTOP, text='Select An Input To Rebind. Hold Modifiers While Entering A Combination.', padBottom=12)
         headings=self.row(panel,20)
@@ -327,6 +341,21 @@ class ControllerSettings(object):
 
     def clear_callback(self, action):
         return lambda *args: self.set_binding(action, '')
+
+    def feedback_status(self):
+        feedback=getattr(self.controller,'feedback',None)
+        if not self.controller.settings['vibrationEnabled']:return 'Vibration: Disabled'
+        return 'Vibration: '+(feedback.status if feedback else 'Unavailable')
+
+    def test_vibration(self,*args):
+        if self.capture or self.identifying:self.message('Finish Input Detection Before Testing');return
+        feedback=getattr(self.controller,'feedback',None)
+        self.message(feedback.test() if feedback else 'Vibration Unavailable')
+
+    def stop_vibration(self,*args):
+        feedback=getattr(self.controller,'feedback',None)
+        if feedback:feedback.stop()
+        self.message('Vibration Stopped')
 
     def capture_callback(self, action):
         return lambda *args: self.begin_capture(action)
@@ -390,7 +419,7 @@ class ControllerSettings(object):
         self.widgets[key] = self.Slider(parent=track, align=self.const.TOTOP, padTop=4, padRight=64, height=16, minValue=low, maxValue=high, value=value, isInteger=step >= 1, callback=change)
 
     def format_value(self,key,value):
-        return '%d%%' % round(value*100) if key=='deadzone' else ('%.2f'%value).rstrip('0').rstrip('.')
+        return '%d%%' % round(value*100) if key in ('deadzone','vibrationStrength','damageVibrationStrength','destructionVibrationStrength') else ('%.2f'%value).rstrip('0').rstrip('.')
 
     def shortcut_title(self,item):
         return (item['modifier'].replace('+',' + ')+' + ' if item['modifier']!='NONE' else '')+item['key']
@@ -610,6 +639,8 @@ class ControllerSettings(object):
         if now - self.last_scan < (0. if detecting else .2):
             return detecting
         self.last_scan = now
+        feedback_status=self.widgets.get('feedback_status')
+        if feedback_status is not None:feedback_status.text=self.feedback_status()
         pads = self.controller.native.scan()
         if set(pads) != set(self.connected):
             self.connected = pads

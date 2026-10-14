@@ -32,6 +32,8 @@ DEFAULTS = dict(schemaVersion=1, controllerIndex=-1, controllerIcons='auto', dea
                 cameraSpeed=800, cursorRing=True, cursorSnap=True, snapRadius=28,
                 snapMaxSpeed=250, clickHoldMilliseconds=500, rightStickStopMilliseconds=1000,
                 invertCameraPan=False, cameraZoomSpeed=.8, triggerThreshold=40,
+                vibrationEnabled=True, vibrationStrength=.65, damageVibration=True, destructionVibration=True,
+                damageVibrationStrength=.8, destructionVibrationStrength=1., dualsenseHaptics=False,
                 bindings=DEFAULT_BINDINGS, customBindings=[], profiles={})
 SHORTCUT_KEYS = [(chr(code), code) for code in range(65, 91)] + [(str(i), 48+i) for i in range(10)] + [('F%d' % i, 111+i) for i in range(1,25)] + [('Space',32),('Tab',9),('Enter',13),('Escape',27),('Backspace',8),('Insert',45),('Delete',46),('Home',36),('End',35),('Page Up',33),('Page Down',34),('Up',38),('Down',40),('Left',37),('Right',39)]
 SHORTCUT_MODIFIERS = [('None','NONE',()),('Ctrl','CTRL',(17,)),('Alt','ALT',(18,)),('Shift','SHIFT',(16,)),
@@ -165,7 +167,8 @@ def preferences(document):
     ranges = dict(controllerIndex=(-1, 15), deadzone=(.05, .5), cursorSpeed=(100, 4000),
                   cameraSpeed=(100, 4000), snapRadius=(8, 64), snapMaxSpeed=(50, 600),
                   clickHoldMilliseconds=(200, 2000), rightStickStopMilliseconds=(500, 3000),
-                  cameraZoomSpeed=(.1, 3.), triggerThreshold=(10, 240))
+                  cameraZoomSpeed=(.1, 3.), triggerThreshold=(10, 240), vibrationStrength=(0.,1.),
+                  damageVibrationStrength=(0.,1.), destructionVibrationStrength=(0.,1.))
     for name, limits in ranges.items():
         value = result[name]
         if isinstance(value, bool) or not isinstance(value, (int, float)) or math.isnan(value) or math.isinf(value) or not limits[0] <= value <= limits[1]:
@@ -174,7 +177,7 @@ def preferences(document):
         if int(result[name]) != result[name]:
             raise ValueError('Invalid ' + name)
         result[name] = int(result[name])
-    for name in ('cursorRing', 'cursorSnap', 'invertCameraPan'):
+    for name in ('cursorRing', 'cursorSnap', 'invertCameraPan','vibrationEnabled','damageVibration','destructionVibration','dualsenseHaptics'):
         if not isinstance(result[name], bool):
             raise ValueError('Invalid ' + name)
     if result['controllerIcons'] not in ('auto','xbox','ps4','ps5','steam'):
@@ -732,10 +735,17 @@ class Controller(object):
         self.radial_gate, self.left_previous = False, False
         self.radial_available = '_ec_radial_open' in helpers
         self.custom_down, self.custom_epoch = set(), 0
+        self.feedback = None
+        if '_CombatFeedback' in helpers:
+            try:self.feedback=helpers['_CombatFeedback'](self)
+            except Exception as error:print('EVEJS_CONTROLLER:Vibration unavailable: '+type(error).__name__)
         try:
             self.menu = settings_api['install'](self, globals()) if settings_api else None
         except Exception:
             try:
+                if self.feedback:
+                    try:self.feedback.close()
+                    except Exception:pass
                 self.native.release()
             finally:
                 closer=getattr(self.native,'close_devices',None)
@@ -751,6 +761,9 @@ class Controller(object):
         listener = getattr(self.native, 'start_listener', None)
         if listener:
             listener()
+        if self.feedback:
+            try:self.feedback.listen()
+            except Exception as error:print('EVEJS_CONTROLLER:Combat feedback unavailable: '+type(error).__name__)
         install = self.helpers.get('_ec_radial_install')
         if install:
             try:
@@ -941,15 +954,18 @@ class Controller(object):
         self.last_tick = now
         pad, changed = self.native.read(self.settings['controllerIndex'])
         if changed:
+            if self.feedback:self.feedback.stop()
             self.mode.reset()
             self.cancel()
         physical = self.native.physical()
         foreground = self.native.foreground()
         if self.menu and self.menu.tick(now, foreground):
+            if self.feedback:self.feedback.tick(now,False,foreground,pad,True)
             self.cancel()
             self.mode.reset()
             return
         active = self.mode.step(pad, physical, foreground, self.settings)
+        if self.feedback:self.feedback.tick(now,active,foreground,pad)
         if not active:
             self.cancel()
             return
@@ -1045,6 +1061,9 @@ class Controller(object):
                     if listener:
                         listener()
                 finally:
+                    if self.feedback:
+                        try:self.feedback.close()
+                        except Exception:pass
                     closer=getattr(self.native,'close_devices',None)
                     if closer:closer()
                     try:
@@ -1066,6 +1085,7 @@ class Controller(object):
                 try:
                     self.tick(time.time())
                 except Exception as error:
+                    if self.feedback:self.feedback.stop()
                     self.cancel()
                     self.mode.reset()
                     print('EVEJS_CONTROLLER:Input paused: ' + type(error).__name__)

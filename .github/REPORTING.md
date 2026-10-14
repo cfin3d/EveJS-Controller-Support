@@ -47,6 +47,8 @@ Help improve EveJS Controller Support by describing what you observed, how to re
 
 For attraction problems, name the menu and neighboring items. For dragging, name the window and say whether the click hold completed. For timing problems, include an approximate delay and whether the game was docking, undocking, or changing sessions.
 
+For vibration problems, include the master toggle, event toggles/strengths, **Enhanced DualSense Haptics (USB)** setting, affected pattern, and displayed **Vibration** status after **Test Vibration**. State whether the preview works but live damage feedback fails, or both fail. A preview does not require combat or destroying your ship.
+
 </details>
 
 ### Find Your Setup Details
@@ -106,13 +108,14 @@ Test only the items relevant to your setup, in a safe gameplay situation. Includ
 | **Radial** | Opens over a valid target; cursor stays within the wheel; range changes, confirmation, and cancellation work. |
 | **Neocom** | Select/View opens it; D-pad moves between entries/submenus; timed confirm/cancel works. |
 | **Settings and Icons** | Correct button style, binding capture, combinations, custom shortcuts, and saved profiles. |
+| **Vibration** | Test Vibration patterns, strength changes, master disable, and Stop Vibration. Report standard and enhanced DualSense results separately, including the displayed status and USB/Bluetooth connection. |
 | **Extra Inputs** | Rear buttons or touchpad clicks can be captured when independently exposed; identify any shared mappings. |
 | **Input Switching** | Physical controller and mouse/keyboard activity switch modes as expected. |
 | **Reconnection** | Unplug/reconnect or wireless reconnection restores input; note changes in detected name or slot. |
 
 </details>
 
-Steam Input and other mappers may expose a virtual Xbox controller. Include the mapper configuration and any manual icon override so another player can reproduce your setup. Gyro, touch gestures, and advanced haptic effects are not currently implemented; basic input results do not verify those features.
+Steam Input and other mappers may expose a virtual Xbox controller. Include the mapper configuration and any manual icon override so another player can reproduce your setup. Enhanced DualSense USB haptics are experimental and require a directly detected compatible device/audio endpoint; ordinary input or rumble results do not verify that output path. Gyro, touch gestures, and adaptive-trigger resistance are not currently implemented.
 
 ## After You Submit
 

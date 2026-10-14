@@ -238,6 +238,19 @@
         "description": "Pulls toward nearby native UI controls and enabled context-menu items while moving slowly. Strong or sustained outward movement escapes it. Attraction pauses while clicking or dragging."
       },
       {
+        "id": "combatHudEnabled",
+        "label": "Enable Combat HUD (Experimental)",
+        "type": "boolean",
+        "default": false,
+        "file": "preferences",
+        "key": [
+          "combatHudEnabled"
+        ],
+        "restart": "none",
+        "group": "Combat HUD",
+        "description": "Fixed module slots with per-ship memory, direct trigger controls and native context menus. Disabled by default while in-game validation is pending."
+      },
+      {
         "id": "snapRadius",
         "label": "Attraction Radius (px)",
         "type": "integer",

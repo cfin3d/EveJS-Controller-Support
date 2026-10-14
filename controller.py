@@ -29,6 +29,7 @@ ACTIONS = [('cursor', 'Move Cursor'), ('cameraPan', 'Pan Camera'),
 DEFAULT_BINDINGS = dict(cursor='LEFT_STICK', cameraPan='RIGHT_STICK',
                         cameraZoom='LT+RIGHT_STICK_Y', leftClick='RB', rightClick='LB', fly='RS', stop='RS',neocom='VIEW',closeWindow='B')
 DEFAULTS = dict(schemaVersion=1, controllerIndex=-1, controllerIcons='auto', deadzone=.20, cursorSpeed=1100,
+                combatHudEnabled=False,
                 cameraSpeed=800, cursorRing=True, cursorSnap=True, snapRadius=28,
                 snapMaxSpeed=250, clickHoldMilliseconds=500, rightStickStopMilliseconds=1000, windowCloseHoldMilliseconds=1000,
                 invertCameraPan=False, cameraZoomSpeed=.8, triggerThreshold=40,
@@ -177,7 +178,7 @@ def preferences(document):
         if int(result[name]) != result[name]:
             raise ValueError('Invalid ' + name)
         result[name] = int(result[name])
-    for name in ('cursorRing', 'cursorSnap', 'invertCameraPan','vibrationEnabled','damageVibration','destructionVibration','dualsenseHaptics'):
+    for name in ('cursorRing', 'cursorSnap', 'invertCameraPan','vibrationEnabled','damageVibration','destructionVibration','dualsenseHaptics','combatHudEnabled'):
         if not isinstance(result[name], bool):
             raise ValueError('Invalid ' + name)
     if result['controllerIcons'] not in ('auto','xbox','ps4','ps5','steam'):
@@ -840,11 +841,15 @@ class Controller(object):
         self.custom_down, self.custom_epoch = set(), 0
         self.window_close=WindowCloseGesture(self)
         self.feedback = None
+        self.combat = None
+        self.combat_gate = 0
         if '_CombatFeedback' in helpers:
             try:self.feedback=helpers['_CombatFeedback'](self)
             except Exception as error:print('EVEJS_CONTROLLER:Vibration unavailable: '+type(error).__name__)
         try:
             self.menu = settings_api['install'](self, globals()) if settings_api else None
+            if '_CombatHUD' in helpers:
+                self.combat = helpers['_CombatHUD'](self)
         except Exception:
             try:
                 if self.feedback:
@@ -883,6 +888,10 @@ class Controller(object):
 
     def cancel(self):
         try:
+            if self.combat:
+                pad = self.mode.previous
+                try:self.combat.detach(input_mask(pad, self.settings) if pad else 0)
+                except Exception as error:print('EVEJS_CONTROLLER:Combat HUD cleanup unavailable: '+type(error).__name__)
             self.window_close.cancel()
             self.custom_epoch += 1
             pad = self.mode.previous
@@ -1058,6 +1067,7 @@ class Controller(object):
         dt = max(.001, min(.05, now - self.last_tick))
         self.last_tick = now
         pad, changed = self.native.read(self.settings['controllerIndex'])
+        self.combat_gate &= pad[0] if pad else 0
         self.window_close.observe(pad)
         if changed:
             if self.feedback:self.feedback.stop()
@@ -1075,6 +1085,15 @@ class Controller(object):
         if not active:
             self.cancel()
             return
+        if self.combat:
+            try:pad = self.combat.route(pad, now)
+            except Exception as error:
+                self.combat_gate |= pad[0] & 0xf00f
+                try:self.combat.close()
+                except Exception:pass
+                self.combat = None
+                print('EVEJS_CONTROLLER:Combat HUD disabled; controller input retained: '+type(error).__name__)
+        if self.combat_gate:pad = (pad[0] & ~self.combat_gate,) + tuple(pad[1:])
         x, y = self.native.position()
         menu_layer = getattr(getattr(self.ui, 'layer', None), 'systemmenu', None)
         settings_open = bool(menu_layer is not None and getattr(menu_layer, 'display', False) and
@@ -1091,6 +1110,7 @@ class Controller(object):
             return
         exclusive, radial_progress = self.radial_tick(pad, x, y, now, settings_open)
         if exclusive:
+            if self.combat:self.combat.gestures.reset(input_mask(pad,self.settings))
             return
         self.custom_tick(pad, settings_open)
         dx, dy = axes('cursor', pad, self.settings)

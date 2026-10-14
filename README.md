@@ -110,6 +110,19 @@ mods/
 
 Switching is automatic. Mouse/keyboard input cancels unfinished controller holds and restores the normal pointer.
 
+<details>
+<summary><strong>Experimental Combat HUD</strong></summary>
+
+Enable **Combat HUD** in **Settings → Controller** to test the native layout in space. It starts with sixteen empty fixed slots; drag modules from the live fitting window onto them, move shortcuts between slots, or drag them onto empty space to clear them. Assignments are remembered for each individual ship. Removing a shortcut leaves the module fitted.
+
+Assigned active modules use a short trigger/button tap to toggle activation and a one-second hold to toggle overload. The controller cursor retains native module tooltips and right-click menus. Native menus take priority over module gestures; both triggers held together suppress direct module actions. Existing camera zoom and bumper clicks remain available.
+
+The banks and native gauge share one center axis. A centered utility strip includes cargo, scanners, tactical overlay, all three camera controls, autopilot, safety and HUD options, plus native zoom and weapon-group controls when available. The stock module rack stays hidden while the controller HUD is active. Undocking and native HUD rebuilds restore and reattach controls; an experimental HUD error falls back without stopping normal controller input.
+
+The feature is disabled by default while gameplay validation is pending. This first implementation supports assignment in space; docked fitting integration and broader viewport coverage remain in development. A viewport narrower than 1,280 logical UI pixels retains the original HUD. Turning the feature off or switching to mouse/keyboard restores the original HUD.
+
+</details>
+
 ### Controls
 
 | Control | Action |

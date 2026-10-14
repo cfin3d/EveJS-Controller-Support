@@ -302,6 +302,22 @@
         "description": "Default 1000 ms. Release a shorter right-stick press to fly toward camera center. Hold this long to stop without issuing forward flight."
       },
       {
+        "id": "windowCloseHoldMilliseconds",
+        "label": "Window Close Hold (ms)",
+        "type": "integer",
+        "default": 1000,
+        "file": "preferences",
+        "key": [
+          "windowCloseHoldMilliseconds"
+        ],
+        "restart": "none",
+        "group": "Controller Feel",
+        "minimum": 500,
+        "maximum": 3000,
+        "step": 100,
+        "description": "Default 1000 ms. Hold the Close Focused Window input to move to its X, then release after the timer fills to activate the native close button. Early release or interruption returns the cursor to its starting position. Neocom and radial B controls keep their own behavior."
+      },
+      {
         "id": "invertCameraPan",
         "label": "Invert Camera Pan",
         "type": "boolean",

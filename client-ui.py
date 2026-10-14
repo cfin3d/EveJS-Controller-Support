@@ -12,6 +12,106 @@ except ImportError:
     import builtins as _ec_builtins
 
 
+def _ec_window_close_owner(uicore):
+    registry=uicore.registry
+    modal=registry.GetModalWindow()
+    if modal is not None:return modal,'window'
+    if _ec_active_menus(uicore):return None,None
+    menu=getattr(getattr(uicore,'layer',None),'systemmenu',None)
+    top=getattr(menu,'topCont',None)
+    if top is not None and _ec_radial_visible(uicore,top):return menu,'settings'
+    active=getattr(registry,'GetActive',lambda:None)()
+    if active is None:
+        focus=getattr(registry,'GetFocus',lambda:None)()
+        if focus is not None:
+            is_window=getattr(registry,'IsTopLevelWindow',lambda node:False)
+            active=focus if is_window(focus) else getattr(registry,'GetTopLevelWindowAboveItem',lambda node:None)(focus)
+    if getattr(active,'stacked',False):active=getattr(active,'stack',None)
+    return active,'window'
+
+
+def _ec_window_close_button(uicore,owner,kind):
+    if owner is None or not _ec_radial_visible(uicore,owner) or getattr(owner,'closing',False):return None
+    if kind=='window':
+        if not getattr(owner,'killable',False):return None
+        minimized=getattr(owner,'IsMinimized',None)
+        if callable(minimized) and minimized():return None
+        root=getattr(owner,'_Window__window_controls',None)
+        if root is None:return None
+    else:root=getattr(owner,'topCont',None)
+    pending=[root];seen=set()
+    for unused in range(128):
+        if not pending:break
+        node=pending.pop(0)
+        if node is None or id(node) in seen:continue
+        seen.add(id(node))
+        if not _ec_radial_visible(uicore,node):continue
+        if kind=='settings':
+            recognized=getattr(node,'func',None)==getattr(owner,'CloseMenuClick',None) and callable(getattr(node,'func',None))
+        else:
+            parent=getattr(node,'parent',None)
+            action=getattr(parent,'action',None)
+            recognized=(getattr(node,'name','')=='CloseButtonIcon' and getattr(action,'window',None) is owner and
+                        getattr(action,'ui_name',None)=='CloseButtonIcon' and getattr(action,'available',False) and getattr(action,'enabled',False))
+        if recognized:
+            clickable=getattr(node,'_IsClickable',None)
+            if getattr(node,'state',0) in (1,2) or not getattr(node,'enabled',True) or callable(clickable) and not clickable():return None
+            if callable(getattr(node,'OnClick',None)):return node
+        pending.extend(list(getattr(node,'children',())))
+    return None
+
+
+def _ec_window_close_target(uicore):
+    try:
+        if getattr(getattr(_ec_builtins,'session',None),'mutating',False):return None
+        owner,kind=_ec_window_close_owner(uicore)
+        button=_ec_window_close_button(uicore,owner,kind)
+        if button is None:return None
+        x,y,w,h=button.GetAbsolute();dx,dy,dw,dh=uicore.desktop.GetAbsolute()
+        if not 6<=w<=96 or not 6<=h<=96 or dw<=0 or dh<=0:return None
+        cx,cy=x+w/2.,y+h/2.
+        if not dx<=x or not dy<=y or x+w>dx+dw or y+h>dy+dh:return None
+        unused,picked=uicore.uilib.PickScreenPosition(int(uicore.ScaleDpi(cx)),int(uicore.ScaleDpi(cy)))
+        for unused in range(16):
+            if picked is button:break
+            picked=getattr(picked,'parent',None)
+            if picked is None:return None
+        else:return None
+        focus=getattr(uicore.registry,'GetActive',lambda:None)() if kind=='window' and uicore.registry.GetModalWindow() is None else owner
+        selected=getattr(owner,'GetActiveWindow',None)
+        if kind=='window' and callable(selected):focus=selected() or focus
+        return dict(owner=owner,button=button,callback=button.OnClick,handler=getattr(button,'func',None),focus=focus or owner,kind=kind,x=(cx-dx)/float(dw),y=(cy-dy)/float(dh))
+    except Exception:return None
+
+
+def _ec_window_close_valid(uicore,target):
+    current=_ec_window_close_target(uicore)
+    if current and current['owner'] is target['owner'] and current['button'] is target['button'] and current['callback']==target['callback'] and current['handler']==target['handler'] and current['focus'] is target['focus']:
+        return current
+    return None
+
+
+def _ec_window_close_invoke(gesture,attempt):
+    # Native close handlers may open a confirmation dialog and yield. Keep the
+    # controller loop running while preserving the exact X action and target.
+    import uthread
+    def close():
+        closed=False
+        try:
+            current=gesture.valid_attempt(attempt)
+            if current:
+                attempt['end']=gesture.point(current)
+                gesture.controller.native.move(*attempt['end'])
+                target=attempt['target']
+                target['callback']()
+                closed=bool(getattr(target['owner'],'closing',False) or not _ec_radial_visible(gesture.controller.ui,target['button']))
+        except Exception as error:
+            print('EVEJS_CONTROLLER:Window close unavailable: '+type(error).__name__)
+        finally:gesture.finish(attempt,closed)
+    try:uthread.new(close)
+    except Exception:gesture.finish(attempt,False)
+
+
 def _ec_hover_target(uicore):
     return _ec_target_bounds(uicore, getattr(getattr(uicore, 'uilib', None), 'mouseOver', None))
 

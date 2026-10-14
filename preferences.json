@@ -18,6 +18,7 @@
   "snapMaxSpeed": 250,
   "clickHoldMilliseconds": 500,
   "rightStickStopMilliseconds": 1000,
+  "windowCloseHoldMilliseconds": 1000,
   "invertCameraPan": false,
   "cameraZoomSpeed": 0.8,
   "triggerThreshold": 40,
@@ -29,7 +30,8 @@
     "rightClick": "LB",
     "fly": "RS",
     "stop": "RS",
-    "neocom": "VIEW"
+    "neocom": "VIEW",
+    "closeWindow": "B"
   },
   "customBindings": [],
   "profiles": {}

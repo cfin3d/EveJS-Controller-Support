@@ -25,12 +25,12 @@ BUTTON_BITS = dict(BUTTONS)
 ACTIONS = [('cursor', 'Move Cursor'), ('cameraPan', 'Pan Camera'),
            ('cameraZoom', 'Zoom Camera'), ('leftClick', 'Left-Click / Target Radial'),
            ('rightClick', 'Right-Click'), ('fly', 'Fly Toward Camera Center'), ('stop', 'Stop Ship'),
-           ('neocom', 'Open Neocom')]
+           ('neocom', 'Open Neocom'), ('closeWindow', 'Close Focused Window')]
 DEFAULT_BINDINGS = dict(cursor='LEFT_STICK', cameraPan='RIGHT_STICK',
-                        cameraZoom='LT+RIGHT_STICK_Y', leftClick='RB', rightClick='LB', fly='RS', stop='RS',neocom='VIEW')
+                        cameraZoom='LT+RIGHT_STICK_Y', leftClick='RB', rightClick='LB', fly='RS', stop='RS',neocom='VIEW',closeWindow='B')
 DEFAULTS = dict(schemaVersion=1, controllerIndex=-1, controllerIcons='auto', deadzone=.20, cursorSpeed=1100,
                 cameraSpeed=800, cursorRing=True, cursorSnap=True, snapRadius=28,
-                snapMaxSpeed=250, clickHoldMilliseconds=500, rightStickStopMilliseconds=1000,
+                snapMaxSpeed=250, clickHoldMilliseconds=500, rightStickStopMilliseconds=1000, windowCloseHoldMilliseconds=1000,
                 invertCameraPan=False, cameraZoomSpeed=.8, triggerThreshold=40,
                 vibrationEnabled=True, vibrationStrength=.65, damageVibration=True, destructionVibration=True,
                 damageVibrationStrength=.8, destructionVibrationStrength=1., dualsenseHaptics=False,
@@ -166,14 +166,14 @@ def preferences(document):
         raise ValueError('Unsupported preferences version')
     ranges = dict(controllerIndex=(-1, 15), deadzone=(.05, .5), cursorSpeed=(100, 4000),
                   cameraSpeed=(100, 4000), snapRadius=(8, 64), snapMaxSpeed=(50, 600),
-                  clickHoldMilliseconds=(200, 2000), rightStickStopMilliseconds=(500, 3000),
+                  clickHoldMilliseconds=(200, 2000), rightStickStopMilliseconds=(500, 3000), windowCloseHoldMilliseconds=(500,3000),
                   cameraZoomSpeed=(.1, 3.), triggerThreshold=(10, 240), vibrationStrength=(0.,1.),
                   damageVibrationStrength=(0.,1.), destructionVibrationStrength=(0.,1.))
     for name, limits in ranges.items():
         value = result[name]
         if isinstance(value, bool) or not isinstance(value, (int, float)) or math.isnan(value) or math.isinf(value) or not limits[0] <= value <= limits[1]:
             raise ValueError('Invalid ' + name)
-    for name in ('controllerIndex', 'clickHoldMilliseconds', 'rightStickStopMilliseconds', 'triggerThreshold'):
+    for name in ('controllerIndex', 'clickHoldMilliseconds', 'rightStickStopMilliseconds', 'windowCloseHoldMilliseconds', 'triggerThreshold'):
         if int(result[name]) != result[name]:
             raise ValueError('Invalid ' + name)
         result[name] = int(result[name])
@@ -183,6 +183,11 @@ def preferences(document):
     if result['controllerIcons'] not in ('auto','xbox','ps4','ps5','steam'):
         raise ValueError('Invalid Controller Icon Style')
     incoming=document.get('bindings', {})
+    if isinstance(incoming,dict) and 'closeWindow' not in incoming:
+        legacy=list(incoming.values())
+        customs=document.get('customBindings',[])
+        if isinstance(customs,list):legacy.extend(item.get('controller','') for item in customs if isinstance(item,dict))
+        if any(isinstance(value,TEXT_TYPES) and binding_overlap(value.upper(),'B') for value in legacy):incoming=dict(incoming,closeWindow='')
     if isinstance(incoming,dict) and 'neocom' not in incoming:
         legacy=list(incoming.values())
         customs=document.get('customBindings', [])
@@ -209,6 +214,104 @@ def stick(x, y, deadzone, exponent=2.):
         return 0., 0.
     scale = ((min(1., length) - deadzone) / (1. - deadzone)) ** exponent
     return nx / length * scale, ny / length * scale
+
+
+class WindowCloseGesture(object):
+    def __init__(self,controller):
+        self.controller=controller
+        self.target=self.origin=self.returning=self.deferred=self.pending=None
+        self.previous,self.gate,self.serial=0,False,0
+        self.started,self.progress=0.,0.
+
+    def identity(self):
+        session=getattr(_builtins,'session',None)
+        return tuple(getattr(session,key,None) for key in ('charid','shipid','solarsystemid','stationid','structureid'))
+
+    def observe(self,pad):
+        if self.target or self.returning:return
+        settings=self.controller.settings
+        if pad is None or not input_mask(pad,settings) and stick(pad[1],pad[2],settings['deadzone'])==(0.,0.) and stick(pad[3],pad[4],settings['deadzone'])==(0.,0.):
+            self.gate=False;self.previous=0
+
+    def cancel(self):
+        origin=self.origin or (self.pending['origin'] if self.pending else None)
+        self.target=self.origin=self.returning=self.pending=None
+        self.progress=0.
+        if origin is not None:
+            self.gate=True;self.serial+=1
+            try:
+                if self.controller.native.foreground():self.controller.native.move(*origin)
+                else:self.deferred=origin
+            except Exception:pass
+
+    def restore(self,now):
+        self.target=None;self.progress=0.;self.gate=True;self.serial+=1
+        self.returning=(now,self.controller.native.position(),self.origin)
+
+    def animate(self,start,end,elapsed):
+        t=max(0.,min(1.,elapsed/.14));ease=t*t*(3.-2.*t)
+        self.controller.native.move(start[0]+(end[0]-start[0])*ease,start[1]+(end[1]-start[1])*ease)
+        return t>=1.
+
+    def point(self,target):
+        left,top,width,height=self.controller.native.bounds()
+        return left+target['x']*width,top+target['y']*height
+
+    def valid_attempt(self,attempt):
+        c=self.controller
+        if not c.active or self.pending is not attempt or self.serial!=attempt['serial'] or self.identity()!=attempt['identity']:return False
+        if not c.native.foreground() or c.mode.mode!='controller' or getattr(c.native,'pending',False):return False
+        return c.native.bounds()==attempt['bounds'] and c.settings['bindings']['closeWindow']==attempt['binding'] and c.settings['windowCloseHoldMilliseconds']==attempt['duration'] and c.helpers['_ec_window_close_valid'](c.ui,attempt['target'])
+
+    def finish(self,attempt,closed):
+        if self.pending is not attempt or self.serial!=attempt['serial']:return
+        self.pending=None
+        if self.controller.native.foreground() and self.controller.mode.mode=='controller':
+            self.controller.native.move(*(attempt['end'] if closed else attempt['origin']))
+        elif not closed:self.deferred=attempt['origin']
+
+    def step(self,pad,now,allow_start=True):
+        c=self.controller;settings=c.settings;value=settings['bindings']['closeWindow']
+        mask=input_mask(pad,settings);needed=binding_mask(value)
+        pressed=matches('closeWindow',pad,settings)
+        rising=pressed and self.previous & needed!=needed
+        self.previous=mask
+        self.progress=0.
+        if self.deferred is not None:
+            c.native.move(*self.deferred);self.deferred=None;self.gate=False;return True
+        if self.returning:
+            stamp,start,end=self.returning
+            if self.animate(start,end,now-stamp):self.returning=self.origin=None
+            return True
+        if self.gate:return True
+        extra=bool(mask & ~needed or stick(pad[1],pad[2],settings['deadzone'])!=(0.,0.) or stick(pad[3],pad[4],settings['deadzone'])!=(0.,0.))
+        if self.pending and (mask or extra):self.serial+=1;self.pending=None
+        if self.target is None:
+            if not rising or not allow_start:return False
+            finder=c.helpers.get('_ec_window_close_target')
+            target=finder(c.ui) if finder else None
+            if target is None:return False
+            if extra or getattr(c.native,'owned',None) or getattr(c.native,'physical_buttons',None):self.gate=True;return True
+            self.serial+=1;self.pending=None
+            self.target,self.origin,self.started=target,c.native.position(),now
+            self.snapshot=(self.identity(),value,settings['windowCloseHoldMilliseconds'],c.native.bounds())
+            c.native.release();c.gestures.reset();c.magnet.reset();c.motion.reset()
+            c.remainder_x=c.remainder_y=0.
+            c.custom_epoch+=1;c.custom_down=c.custom_pressed(pad)
+        target=c.helpers['_ec_window_close_valid'](c.ui,self.target)
+        if not allow_start or extra or not target or self.snapshot!=(self.identity(),value,settings['windowCloseHoldMilliseconds'],c.native.bounds()) or getattr(getattr(_builtins,'session',None),'mutating',False):
+            self.restore(now);return True
+        end=self.point(target)
+        self.progress=max(0.,min(1.,(now-self.started)/(settings['windowCloseHoldMilliseconds']/1000.)))
+        if not pressed:
+            if self.progress<1. or not released(value,pad,settings):self.restore(now);return True
+            c.native.move(*end)
+            attempt=dict(target=self.target,origin=self.origin,end=end,serial=self.serial,identity=self.identity(),binding=value,duration=settings['windowCloseHoldMilliseconds'],bounds=c.native.bounds())
+            self.pending=attempt;self.target=self.origin=None;self.gate=True;self.progress=0.
+            c.helpers['_ec_window_close_invoke'](self,attempt)
+            return True
+        self.animate(self.origin,end,now-self.started)
+        return True
 
 
 class CursorMotion(object):
@@ -735,6 +838,7 @@ class Controller(object):
         self.radial_gate, self.left_previous = False, False
         self.radial_available = '_ec_radial_open' in helpers
         self.custom_down, self.custom_epoch = set(), 0
+        self.window_close=WindowCloseGesture(self)
         self.feedback = None
         if '_CombatFeedback' in helpers:
             try:self.feedback=helpers['_CombatFeedback'](self)
@@ -779,6 +883,7 @@ class Controller(object):
 
     def cancel(self):
         try:
+            self.window_close.cancel()
             self.custom_epoch += 1
             pad = self.mode.previous
             self.custom_down = self.custom_pressed(pad) if pad else set()
@@ -953,6 +1058,7 @@ class Controller(object):
         dt = max(.001, min(.05, now - self.last_tick))
         self.last_tick = now
         pad, changed = self.native.read(self.settings['controllerIndex'])
+        self.window_close.observe(pad)
         if changed:
             if self.feedback:self.feedback.stop()
             self.mode.reset()
@@ -973,6 +1079,14 @@ class Controller(object):
         menu_layer = getattr(getattr(self.ui, 'layer', None), 'systemmenu', None)
         settings_open = bool(menu_layer is not None and getattr(menu_layer, 'display', False) and
                              any(getattr(child, 'display', False) and not getattr(child, 'destroyed', False) for child in getattr(menu_layer, 'children', [])))
+        if self.window_close.step(pad,now,not (self.neocom or self.radial or self.radial_hold or self.radial_gate)):
+            self.native.release()
+            self.gestures.reset();self.magnet.reset();self.motion.reset()
+            self.remainder_x=self.remainder_y=0.
+            self.custom_epoch+=1
+            self.custom_down=self.custom_pressed(pad)
+            self.overlay.update(True,self.settings['cursorRing'],True,{2:self.window_close.progress} if self.window_close.target else {},False,0.,dt)
+            return
         if self.neocom_tick(pad,now,settings_open,dt):
             return
         exclusive, radial_progress = self.radial_tick(pad, x, y, now, settings_open)

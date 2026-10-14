@@ -118,12 +118,36 @@ Switching is automatic. Mouse/keyboard input cancels unfinished controller holds
 | <img src="assets/buttons/lb.svg" width="28" height="28" alt="Left Bumper"> **Left Bumper** | Hold **0.5 seconds** for right-click. |
 | <img src="assets/buttons/rb.svg" width="28" height="28" alt="Right Bumper"> **Right Bumper** | Hold **0.5 seconds** over a target to open its radial menu. On normal UI, hold for left-click and continue holding to drag. |
 | <img src="assets/buttons/view.svg" width="28" height="28" alt="Select / View"> **Select / View** | Open controller navigation in the Neocom menu. |
+| <img src="assets/buttons/b.svg" width="28" height="28" alt="B"> **B — Hold, Then Release** | Move to the focused window's X; release after **one second** to close it. Release early to cancel and return the cursor. |
 | <img src="assets/buttons/right-stick.svg" width="28" height="28" alt="Right Stick"> **Right Stick** | Pan/rotate the camera in space or while docked. |
 | <img src="assets/buttons/lt.svg" width="28" height="28" alt="Left Trigger"> <img src="assets/buttons/right-stick.svg" width="28" height="28" alt="Right Stick"> **Hold Left Trigger + Right Stick** | Move **up** to zoom in or **down** to zoom out. Release the trigger to resume panning. |
 | <img src="assets/buttons/right-stick.svg" width="28" height="28" alt="Right Stick Press"> **Right Stick — Short Press** | Release before one second to fly toward camera center. |
 | <img src="assets/buttons/right-stick.svg" width="28" height="28" alt="Right Stick Hold"> **Right Stick — Hold** | Hold **one second** to request stop. |
 
 These are the default bindings. Release a bumper early to cancel its click. A long right-stick hold stops the ship without first issuing flight.
+
+### Close Focused Windows
+
+With a window such as **Skills**, **Inventory**, or **Settings** focused, hold **B**. The cursor moves smoothly to its X and fills the hold indicator. **Release after the indicator fills** to use that X. Continuing to hold keeps the window open.
+
+| Result | Cursor Position |
+| :--- | :--- |
+| **Released Before the Timer Fills** | Returns smoothly to its starting position; the window stays open. |
+| **Released After the Timer Fills** | Uses the native X action once; stays where the X was after successful closure. |
+| **Interrupted or No Longer Closable** | Cancels the action and restores the starting position. |
+
+Set **Window Close Hold** in **Settings → Controller → Hold Timing**; it defaults to **1,000 ms**. Rebind **Close Focused Window** under **Bindings**. Neocom's A/B holds still use **Click / Activation Hold**, and radial B cancellation stays immediate.
+
+<details>
+<summary><strong>Window Focus, Cancellation, and Existing Bindings</strong></summary>
+
+- Targets the window focused when the hold starts, using its actual visible, enabled X. Modal windows take priority; hidden, covered, blocked, and unclosable controls are excluded. A stack follows its visible X's native close-stack behavior.
+- Changing the focused window/tab, moving a stick, pressing another controller input, losing focus/connection, changing sessions/settings, or starting binding capture cancels the hold. Other controller actions pause while it moves, holds, or returns the cursor; release the controls to resume.
+- Native X behavior, including close restrictions and confirmation dialogs, is preserved. A rejected close restores the starting position while the gesture still owns the cursor.
+- Mouse/keyboard takeover cancels the hold. Losing application focus does not move the desktop pointer; the saved position is restored when EVE has focus and controller input resumes.
+- Existing B bindings and combinations are preserved on update. If B was already assigned, **Close Focused Window** starts unassigned until you choose its input. Neocom and radial navigation retain their contextual B actions.
+
+</details>
 
 ### Neocom Navigation
 
@@ -180,7 +204,7 @@ Normal cursor, click, camera, zoom, flight, and stop controls pause while the wh
 | Indicator | Meaning |
 | :--- | :--- |
 | **Cyan Arc** | Left-click, target radial opening, or Neocom A confirmation. |
-| **Amber Arc** | Right-click confirmation or Neocom B cancellation. |
+| **Amber Arc** | Right-click confirmation, Neocom B cancellation, or focused-window close progress. |
 | **Orange Arc** | Stop confirmation. |
 | **Center Dot** | Flight direction; hidden beneath menus and when UI covers camera center. |
 
@@ -199,7 +223,7 @@ In EVE, open **Settings → Controller**. Changes save and apply automatically.
 | **Controller** | Auto-detect or choose a connected device. **Identify Controller** selects the device you use next. |
 | **Button Icons** | Automatically match the active device, or choose Xbox, PlayStation 4/5, or Steam when a mapper hides its identity. |
 | **Camera** | Adjust pan/zoom speed and toggle **Invert Camera Pan** for vertical panning. |
-| **Cursor and Hold Timing** | Adjust precision, UI attraction, cursor appearance, and click/stop timing. |
+| **Cursor and Hold Timing** | Adjust precision, UI attraction, cursor appearance, and click/stop/window-close timing. |
 | **Vibration** | Enable/disable all feedback, adjust overall and event strengths, toggle damage/destruction effects, and test or stop vibration. |
 | **Bindings** | Compact white button icons show each input or combination. Rebind an action or clear its input; conflicts show a confirmation before replacing the previous assignment. |
 | **Custom Bindings** | Choose a modifier and keyboard key, capture a controller button/combination, then select **Add Binding**. |
@@ -244,6 +268,7 @@ Only incoming damage to the ship you are currently piloting activates combat fee
 | Invert Camera Pan | Off |
 | Click Hold | 500 ms |
 | Right Stick Stop Hold | 1,000 ms |
+| Window Close Hold | 1,000 ms |
 | Vibration | On |
 | Overall / Damage / Destruction Strength | 65% / 80% / 100% |
 | Enhanced DualSense Haptics | Off |

@@ -107,6 +107,7 @@ Test only the items relevant to your setup, in a safe gameplay situation. Includ
 | **Ship Actions** | Short stick press flies toward camera center; long hold requests stop. |
 | **Radial** | Opens over a valid target; cursor stays within the wheel; range changes, confirmation, and cancellation work. |
 | **Neocom** | Select/View opens it; D-pad moves between entries/submenus; timed confirm/cancel works. |
+| **Window Closing** | B moves to the focused window's X; release after the timer to close, release early to return the cursor. Test Settings and an ordinary window separately. |
 | **Settings and Icons** | Correct button style, binding capture, combinations, custom shortcuts, and saved profiles. |
 | **Vibration** | Test Vibration patterns, strength changes, master disable, and Stop Vibration. Report standard and enhanced DualSense results separately, including the displayed status and USB/Bluetooth connection. |
 | **Extra Inputs** | Rear buttons or touchpad clicks can be captured when independently exposed; identify any shared mappings. |

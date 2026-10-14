@@ -17,7 +17,7 @@ BUTTON_ICONS.update((name,name.lower()) for name in ('R4','L4','R5','L5','TOUCHP
 PS_ICON_FILES=('cross','circle','square','triangle','l1','r1','l2','r2','l3','r3','create','share','select','start','options','ps','touchpad')
 PROFILE_KEYS = ('bindings', 'customBindings', 'controllerIcons', 'deadzone', 'cursorSpeed', 'cameraSpeed', 'cameraZoomSpeed',
                 'invertCameraPan', 'cursorRing', 'cursorSnap', 'snapRadius', 'snapMaxSpeed',
-                'clickHoldMilliseconds', 'rightStickStopMilliseconds', 'triggerThreshold',
+                'clickHoldMilliseconds', 'rightStickStopMilliseconds', 'windowCloseHoldMilliseconds', 'triggerThreshold',
                 'vibrationEnabled','vibrationStrength','damageVibration','destructionVibration',
                 'damageVibrationStrength','destructionVibrationStrength','dualsenseHaptics')
 
@@ -295,7 +295,7 @@ class ControllerSettings(object):
         self.pair(panel, [('snapRadius','Attraction Radius (px)',8,64,1),('snapMaxSpeed','Attraction Speed Limit (px/s)',50,600,10)])
         self.Header(parent=panel, text='Hold Timing', padTop=12)
         self.pair(panel, [('clickHoldMilliseconds','Click / Activation Hold (ms)',200,2000,50),('rightStickStopMilliseconds','Stop Hold (ms)',500,3000,100)])
-        self.pair(panel, [('triggerThreshold','Trigger Activation',10,240,5)])
+        self.pair(panel, [('triggerThreshold','Trigger Activation',10,240,5),('windowCloseHoldMilliseconds','Window Close Hold (ms)',500,3000,100)])
         self.Header(parent=panel,text='Vibration',padTop=12)
         self.check(panel,'vibrationEnabled','Enable Vibration','Turn All Controller Feedback On Or Off')
         self.pair(panel,[('vibrationStrength','Overall Strength',0.,1.,.05)])
@@ -314,7 +314,7 @@ class ControllerSettings(object):
         self.Label(parent=action_heading,align=self.const.TOTOP,text='<b>Action</b>')
         self.Label(parent=headings,align=self.const.TOALL,text='<b>Controller Input</b>')
         for action, title in self.api['ACTIONS']:
-            self.binding_row(panel, title + (' (Tap)' if action == 'fly' else ' (Hold)' if action == 'stop' else ''),
+            self.binding_row(panel, title + (' (Tap)' if action == 'fly' else ' (Hold)' if action == 'stop' else ' (Hold / Release)' if action=='closeWindow' else ''),
                              settings['bindings'][action], self.capture_callback(action), self.clear_callback(action), 'binding:'+action)
         self.Label(parent=panel, align=self.const.TOTOP, text='Rear Buttons And Touchpad Clicks Can Be Bound When Exposed As Independent Inputs.', padBottom=8)
         self.Header(parent=panel, text='Custom Bindings', padTop=12)

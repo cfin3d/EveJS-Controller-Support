@@ -128,7 +128,7 @@ These are the default bindings. Release a bumper early to cancel its click. A lo
 
 ### Close Focused Windows
 
-With a window such as **Skills**, **Inventory**, or **Settings** focused, hold **B**. The cursor moves smoothly to its X and fills the hold indicator. **Release after the indicator fills** to use that X. Continuing to hold keeps the window open.
+With a window such as **Skills**, **Inventory**, **Settings**, **Ship Tree**, or **Map** focused, hold **B**. The cursor moves smoothly to its X and fills the hold indicator. **Release after the indicator fills** to use that X. Continuing to hold keeps the window open.
 
 | Result | Cursor Position |
 | :--- | :--- |

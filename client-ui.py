@@ -32,11 +32,15 @@ def _ec_window_close_owner(uicore):
 
 def _ec_window_close_button(uicore,owner,kind):
     if owner is None or not _ec_radial_visible(uicore,owner) or getattr(owner,'closing',False):return None
-    if kind=='window':
-        if not getattr(owner,'killable',False):return None
+    if kind!='settings':
         minimized=getattr(owner,'IsMinimized',None)
         if callable(minimized) and minimized():return None
-        root=getattr(owner,'_Window__window_controls',None)
+        if kind=='dockpanel':
+            if not owner.IsClosable():return None
+            root=getattr(owner,'toolbarContainer',None)
+        else:
+            if not getattr(owner,'killable',False):return None
+            root=getattr(owner,'_Window__window_controls',None)
         if root is None:return None
     else:root=getattr(owner,'topCont',None)
     pending=[root];seen=set()
@@ -48,6 +52,9 @@ def _ec_window_close_button(uicore,owner,kind):
         if not _ec_radial_visible(uicore,node):continue
         if kind=='settings':
             recognized=getattr(node,'func',None)==getattr(owner,'CloseMenuClick',None) and callable(getattr(node,'func',None))
+        elif kind=='dockpanel':
+            recognized=(getattr(node,'name','')=='DockPanel_HeaderButton_Close' and
+                        getattr(node,'func',None)==getattr(owner,'CloseByUser',None) and callable(getattr(node,'func',None)))
         else:
             parent=getattr(node,'parent',None)
             action=getattr(parent,'action',None)
@@ -65,6 +72,7 @@ def _ec_window_close_target(uicore):
     try:
         if getattr(getattr(_ec_builtins,'session',None),'mutating',False):return None
         owner,kind=_ec_window_close_owner(uicore)
+        if kind=='window' and getattr(owner,'toolbarContainer',None) is not None and callable(getattr(owner,'IsClosable',None)):kind='dockpanel'
         button=_ec_window_close_button(uicore,owner,kind)
         if button is None:return None
         x,y,w,h=button.GetAbsolute();dx,dy,dw,dh=uicore.desktop.GetAbsolute()
@@ -77,9 +85,9 @@ def _ec_window_close_target(uicore):
             picked=getattr(picked,'parent',None)
             if picked is None:return None
         else:return None
-        focus=getattr(uicore.registry,'GetActive',lambda:None)() if kind=='window' and uicore.registry.GetModalWindow() is None else owner
+        focus=getattr(uicore.registry,'GetActive',lambda:None)() if kind!='settings' and uicore.registry.GetModalWindow() is None else owner
         selected=getattr(owner,'GetActiveWindow',None)
-        if kind=='window' and callable(selected):focus=selected() or focus
+        if kind!='settings' and callable(selected):focus=selected() or focus
         return dict(owner=owner,button=button,callback=button.OnClick,handler=getattr(button,'func',None),focus=focus or owner,kind=kind,x=(cx-dx)/float(dw),y=(cy-dy)/float(dh))
     except Exception:return None
 
@@ -104,7 +112,13 @@ def _ec_window_close_invoke(gesture,attempt):
                 gesture.controller.native.move(*attempt['end'])
                 target=attempt['target']
                 target['callback']()
-                closed=bool(getattr(target['owner'],'closing',False) or not _ec_radial_visible(gesture.controller.ui,target['button']))
+                # DockablePanel.CloseByUser schedules native Close in another
+                # task. Yield briefly for that task before deciding it refused.
+                for step in range(9):
+                    closed=bool(getattr(target['owner'],'closing',False) or not _ec_radial_visible(gesture.controller.ui,target['button']))
+                    if closed or target['kind']!='dockpanel' or step==8 or gesture.pending is not attempt or gesture.serial!=attempt['serial']:break
+                    import blue
+                    blue.pyos.synchro.SleepWallclock(16)
         except Exception as error:
             print('EVEJS_CONTROLLER:Window close unavailable: '+type(error).__name__)
         finally:gesture.finish(attempt,closed)

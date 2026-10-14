@@ -84,6 +84,7 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 
 ### Fixed
 
+- Recognize the native dockable-panel toolbar X used by **Ship Tree** and **Map**, including floating, side-docked and fullscreen layouts, so **Close Focused Window** can snap to and activate it. Respect each panel's native closability, visibility, hit-testing and focus; keep early-release/interruption cancellation and wait briefly for the panel's separately scheduled close task before restoring the cursor after a refusal. A successful close retains the cursor at the X, and input takeover prevents a later completion from moving it.
 - Release only owned gamepad handles/subsystem references and restore owned polling-event/hint settings on shutdown or initialization failure. Keep physical input handover, tagged synthetic mouse filtering, preferences, and existing gameplay bindings intact.
 - Preserve previously assigned Select/View inputs when adding the new default Neocom binding. Keep held controls from carrying actions across menu transitions; restart A confirmation when selection changes, prioritize B cancellation, and activate once per hold.
 - Temporarily suppress native Neocom hover expansion during controller navigation and restore owned hooks on selection, cancellation, physical input, focus loss, disconnection, settings/configuration changes, or session transitions.

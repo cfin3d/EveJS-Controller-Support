@@ -2,7 +2,7 @@
   "schemaVersion": 3,
   "id": "evejs-controller",
   "displayName": "EveJS Controller",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Controller support inside the EVE client with automatic input switching, precision cursor and menu navigation, native Controller settings, camera/ship controls, combat vibration and optional DualSense USB haptics.",
   "kind": "loader",
   "supportedBackends": [

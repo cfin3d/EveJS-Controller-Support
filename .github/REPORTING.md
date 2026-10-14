@@ -64,7 +64,7 @@ For vibration problems, include the master toggle, event toggles/strengths, **En
 | **Input Software** | Steam Input, another mapper, or **Not Used**. Include the layout and whether a trackpad maps to a joystick. |
 | **Server Backend** | **Native**, **Docker**, or **Unknown** for the EveJS server setup. |
 
-An unreleased build may display the planned version **0.1.0**. The download date or commit helps distinguish snapshots that share that number.
+An unreleased build may display the planned version **1.0.0**. The download date or commit helps distinguish snapshots that share that number.
 
 ### Screenshots and Logs
 

@@ -33,7 +33,7 @@
 ---
 
 > [!NOTE]
-> **Unreleased Testing Build.** The first release will be **0.1.0**.
+> **Unreleased Testing Build.** The first release will be **1.0.0**.
 
 ## Features
 
@@ -323,6 +323,6 @@ For startup failures, include client-log entries containing `EVEJS_CONTROLLER_ST
 
 ---
 
-**Versions:** `MAJOR.MINOR.PATCH`, starting at **0.1.0**. See the [Changelog](CHANGELOG.md) for detailed updates.
+**Versions:** `MAJOR.MINOR.PATCH`, starting at **1.0.0**. See the [Changelog](CHANGELOG.md) for detailed updates.
 
 Licensed under [GPL-3.0](LICENSE).

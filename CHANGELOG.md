@@ -1,6 +1,6 @@
 # Changelog
 
-Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**. No release has been published; the initial release will be **0.1.0**.
+Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**. No release has been published; the initial release will be **1.0.0**.
 
 ## [Unreleased]
 
@@ -62,6 +62,7 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 
 ### Changed
 
+- Set the first public release target to **1.0.0**. Align the testing-build manifest, README and reporting guidance with that target; all changes remain **Unreleased** until publication.
 - Package the controller backend and its runtime/license with the installable mod folder; no companion process or separate library installation is required. Mark PlayStation/Steam physical hardware and SteamOS/Proton coverage as requiring community testing.
 - Rename the shared timing control to **Click / Activation Hold** to cover normal clicks, radial opening, and Neocom A/B activation. Preserve its stored key and existing values.
 - Reformat Controller settings into spaced sections, paired half-width slider fields with separate value labels, and uniform action/input/clear columns. Apply matching rows to custom bindings and keep modifier/key selection in a compact two-column editor.

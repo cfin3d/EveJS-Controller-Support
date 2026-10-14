@@ -62,7 +62,7 @@ PlayStation/Steam hardware and SteamOS/Proton compatibility need community testi
 <details>
 <summary><strong>Controller Connections and Icons</strong></summary>
 
-- **PlayStation:** direct USB/Bluetooth input paths are included. Detected PlayStation devices use matching white symbols and L1/R1/L2/R2 labels in settings and radial prompts. Neocom confirmation/cancellation use Cross/Circle in the same button positions as A/B.
+- **PlayStation:** direct USB/Bluetooth input paths are included. Detected PlayStation devices use matching white symbols and L1/R1/L2/R2 labels in settings and radial prompts.
 - **Steam Deck / Steam Controller:** use gamepad output when launching through Steam Input. On controllers using a trackpad for right-stick functions, map that trackpad to the right joystick in the Steam controller layout.
 - **Button Icons:** **Auto-Detect** follows the active detected controller. Steam Input and other mappers may expose a virtual Xbox device; choose **PlayStation 4**, **PlayStation 5**, or **Steam** manually in **Settings → Controller** when needed.
 - **Multiple Controllers:** Auto-Detect follows controller activity. Use **Identify Controller** or choose a named slot to keep one device selected. Up to 16 connected slots are available; identify it again if connection order changes between sessions.
@@ -136,7 +136,7 @@ With a window such as **Skills**, **Inventory**, **Settings**, **Ship Tree**, or
 | **Released After the Timer Fills** | Uses the native X action once; stays where the X was after successful closure. |
 | **Interrupted or No Longer Closable** | Cancels the action and restores the starting position. |
 
-Set **Window Close Hold** in **Settings → Controller → Hold Timing**; it defaults to **1,000 ms**. Rebind **Close Focused Window** under **Bindings**. Neocom's A/B holds still use **Click / Activation Hold**, and radial B cancellation stays immediate.
+Set **Window Close Hold** in **Settings → Controller → Hold Timing**; it defaults to **1,000 ms**. Rebind **Close Focused Window** under **Bindings**. Neocom's RB/B holds still use **Click / Activation Hold**, and radial B cancellation stays immediate.
 
 <details>
 <summary><strong>Window Focus, Cancellation, and Existing Bindings</strong></summary>
@@ -158,16 +158,16 @@ Press **Select / View** to open Neocom. The cursor moves smoothly between items 
 | <img src="assets/buttons/dpad-up.svg" width="28" height="28" alt="D-Pad Up"> <img src="assets/buttons/dpad-down.svg" width="28" height="28" alt="D-Pad Down"> **D-Pad Up / Down** | Move between items immediately; hold to repeat. |
 | <img src="assets/buttons/dpad-right.svg" width="28" height="28" alt="D-Pad Right"> **D-Pad Right** | Enter a submenu immediately. |
 | <img src="assets/buttons/dpad-left.svg" width="28" height="28" alt="D-Pad Left"> **D-Pad Left** | Return to the parent menu immediately. |
-| <img src="assets/buttons/a.svg" width="28" height="28" alt="A"> **Hold A** | Fill the indicator to select an item. Groups open their submenu; opening an item collapses Neocom and restores normal cursor use. |
+| <img src="assets/buttons/rb.svg" width="28" height="28" alt="Right Bumper"> **Hold RB** | Fill the indicator to select an item. Groups open their submenu; opening an item collapses Neocom and restores normal cursor use. |
 | <img src="assets/buttons/b.svg" width="28" height="28" alt="B"> **Hold B** | Fill the indicator to close Neocom and restore normal cursor use. |
 
-**A/B holds default to 0.5 seconds**, configured by **Click / Activation Hold** in **Settings → Controller**. D-pad navigation has no activation hold. Pressing **Select / View** again also closes Neocom. Mouse/keyboard input ends controller navigation; normal gameplay and custom actions pause while it is active.
+**RB/B holds default to 0.5 seconds**, configured by **Click / Activation Hold** in **Settings → Controller**. D-pad navigation has no activation hold. Pressing **Select / View** again also closes Neocom. Mouse/keyboard input ends controller navigation; normal gameplay and custom actions pause while it is active.
 
 <details>
 <summary><strong>Neocom Bindings and Activation</strong></summary>
 
 - Rebind **Open Neocom** in **Settings → Controller → Bindings**. Existing assignments to Select/View are preserved when updating; if that input was already used, assign Open Neocom yourself.
-- Releasing A or B before its hold completes cancels the pending activation. A's timer restarts when the highlighted item changes, and each hold activates only once. B takes priority over A when both are held.
+- Releasing RB or B before its hold completes cancels the pending activation. RB's timer restarts when the highlighted item changes, and each hold activates only once. B takes priority over RB when both are held.
 - Native hover expansion pauses during controller navigation, keeping submenu changes under D-pad control. Focus loss, disconnection, session changes, or opening Settings also closes the controller menu.
 
 </details>
@@ -203,7 +203,7 @@ Normal cursor, click, camera, zoom, flight, and stop controls pause while the wh
 
 | Indicator | Meaning |
 | :--- | :--- |
-| **Cyan Arc** | Left-click, target radial opening, or Neocom A confirmation. |
+| **Cyan Arc** | Left-click, target radial opening, or Neocom RB confirmation. |
 | **Amber Arc** | Right-click confirmation, Neocom B cancellation, or focused-window close progress. |
 | **Orange Arc** | Stop confirmation. |
 | **Center Dot** | Flight direction; hidden beneath menus and when UI covers camera center. |

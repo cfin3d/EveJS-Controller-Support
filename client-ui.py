@@ -517,7 +517,7 @@ def _ec_neocom_open(uicore,controller,pad):
             self.direction,self.next_repeat=0,0.
             self.transition=None
             self.holds,self.fills={},{}
-            self.blocked=set(button for button in (0x1000,0x2000) if pad[0] & button)
+            self.blocked=set(button for button in (0x200,0x2000) if pad[0] & button)
             self.epoch=controller.custom_epoch
             self.identity=self.session_identity()
             # Pause native mouse-hover expansion while controller focus moves.
@@ -634,8 +634,8 @@ def _ec_neocom_open(uicore,controller,pad):
             self.direction=direction
             if not self.valid():return False
             self.fills={}
-            for button,indicator in ((0x2000,2),(0x1000,1)):
-                if button==0x1000 and mask & 0x2000:
+            for button,indicator in ((0x2000,2),(0x200,1)):
+                if button==0x200 and mask & 0x2000:
                     self.holds.pop(button,None)
                     continue
                 if not mask & button:
@@ -644,7 +644,7 @@ def _ec_neocom_open(uicore,controller,pad):
                     continue
                 if button in self.blocked:continue
                 row=self.selected()
-                key=(id(self.stack[-1][0]),id(row)) if button==0x1000 else None
+                key=(id(self.stack[-1][0]),id(row)) if button==0x200 else None
                 hold=self.holds.get(button)
                 if hold is None or hold[1]!=key:
                     hold=(now,key)

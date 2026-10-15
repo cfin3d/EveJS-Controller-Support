@@ -197,6 +197,11 @@ def _ec_ui_navigate(controller, x, y, zoom, dt):
         if owner is None or owner is getattr(ui,'desktop',None):state.clear();return False
         selected=getattr(owner,'GetActiveWindow',None)
         if callable(selected):owner=selected() or owner
+        overview=getattr(controller,'overview',None)
+        # EVE can leave Overview natively active after its controller session
+        # ends. Only the explicit session may own navigation for that window.
+        if overview is not None and not overview.active and owner is overview.last_window:
+            state.clear();return False
         if (owner is None or not _ec_radial_visible(ui,owner) or getattr(owner,'state',0) in (1,2) or
                 getattr(owner,'closing',False) or callable(getattr(owner,'IsMinimized',None)) and owner.IsMinimized()):
             state.clear();return False

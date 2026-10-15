@@ -107,6 +107,7 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 
 ### Fixed
 
+- Return right-stick camera pan and zoom after exiting Overview focus with Hold B or cursor escape, including escape from an Overview object menu. Prevent general focused-window scrolling from reacquiring the last Overview through EVE's lingering native active-window or stacked-window state. Clear cached scrolling state without changing native focus or interrupting other focused windows, menus and modal dialogs.
 - Rearm controller menu focus when all controller inputs are released during mouse/keyboard use, so a fresh Start/Menu press after input takeover can focus Overview immediately. Continue gating buttons held through an interruption.
 - Restore borrowed native module handlers even if HUD attachment fails partway through replacing them, then recover through the standard HUD fallback.
 - Match combat D-pad prompts to the face-button ring pixels, stroke weight and padding through the same white raster-sprite rendering. Inset the direction symbol inside the badge and fit LT/RT backdrops to the trigger silhouette; retain matching tone and sharpness through bank emphasis.

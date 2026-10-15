@@ -182,6 +182,7 @@ The focused row smoothly grows, pushing neighboring rows apart. Its Name column 
 
 - Rebind **Focus Overview** under **Settings → Controller → Bindings**. Existing Start/Menu assignments and combinations are preserved on update.
 - Set **Focused Row Extra Height** under **Settings → Controller → Overview**; zero retains native row and text sizes. Disable **Smooth Overview Transitions** for immediate movement.
+- Exiting Overview focus returns the right stick to camera pan/zoom even if EVE still marks Overview as its active window. Other focused windows, menus and dialogs retain their normal scrolling.
 - The enabled combat HUD stays visible during Overview and object-menu navigation. Module controls pause until Overview focus ends; existing module activity continues.
 - Native tab order, renamed tabs, filters, column widths, window placement, fonts and UI scaling remain under EVE's control. With multiple open Overviews, the hovered Overview takes priority, followed by the last used visible Overview.
 - Focus follows an object's identity through sorting. If it disappears, pending holds are canceled; use fresh D-pad input to choose another object.

@@ -137,6 +137,8 @@ The feature is disabled by default while gameplay validation is pending. This fi
 
 </details>
 
+![Experimental Combat HUD](assets/combat-hud.jpg)
+
 ### Controls
 
 | Control | Action |

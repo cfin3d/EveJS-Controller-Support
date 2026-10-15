@@ -841,6 +841,7 @@ class Controller(object):
         self.custom_down, self.custom_epoch = set(), 0
         self.window_close=WindowCloseGesture(self)
         self.ui_navigation = {}
+        self.context = helpers['_ContextNavigation'](self) if '_ContextNavigation' in helpers else None
         self.feedback = None
         self.combat = None
         self.combat_gate = 0
@@ -890,6 +891,9 @@ class Controller(object):
     def cancel(self):
         try:
             self.ui_navigation.clear()
+            if self.context:
+                if self.context.active:self.radial_gate = True
+                self.context.cancel()
             if self.combat:
                 pad = self.mode.previous
                 try:self.combat.detach(input_mask(pad, self.settings) if pad else 0)
@@ -934,7 +938,7 @@ class Controller(object):
                 continue
             def execute(binding=dict(item)):
                 current = tuple(getattr(getattr(_builtins,'session',None),key,None) for key in ('charid','shipid','solarsystemid','stationid','structureid'))
-                if not self.active or epoch != self.custom_epoch or identity != current or self.mode.mode != 'controller' or not self.native.foreground() or self.radial or self.radial_gate or self.neocom:
+                if not self.active or epoch != self.custom_epoch or identity != current or self.mode.mode != 'controller' or not self.native.foreground() or self.radial or self.radial_gate or self.neocom or self.context and self.context.active:
                     return
                 try:
                     self.helpers['_ec_custom_execute'](self.ui, binding)
@@ -1100,6 +1104,11 @@ class Controller(object):
         menu_layer = getattr(getattr(self.ui, 'layer', None), 'systemmenu', None)
         settings_open = bool(menu_layer is not None and getattr(menu_layer, 'display', False) and
                              any(getattr(child, 'display', False) and not getattr(child, 'destroyed', False) for child in getattr(menu_layer, 'children', [])))
+        if self.context and self.context.step(pad,now,dt):
+            self.native.release()
+            self.custom_down=self.custom_pressed(pad)
+            self.overlay.update(True,self.settings['cursorRing'],True,self.context.fills,False,0.,dt)
+            return
         if self.window_close.step(pad,now,not (self.neocom or self.radial or self.radial_hold or self.radial_gate)):
             self.native.release()
             self.gestures.reset();self.magnet.reset();self.motion.reset()
@@ -1140,6 +1149,7 @@ class Controller(object):
         held, fills, action, stop, stop_fill = self.gestures.step(pad, x, y, hover['id'] if hover else None, now, self.settings, radial_progress is not None)
         if radial_progress is not None:
             fills[1] = radial_progress
+        if self.context:self.context.observe(held,now)
         self.native.buttons(held)
         rx, ry = axes('cameraPan', pad, self.settings)
         zx, zy = axes('cameraZoom', pad, self.settings)

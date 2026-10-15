@@ -25,7 +25,7 @@ try {
         try { $hash = ([BitConverter]::ToString($sha256.ComputeHash([Text.Encoding]::UTF8.GetBytes($source)))).Replace('-', '').ToLowerInvariant() }
         finally { $sha256.Dispose() }
         if ($hash -ne '4fc3c37ec83c443c1497a3daba57d7157d05bbe55af3be2d5545b6162398ebc9') { throw 'The installed EveJS login source is not compatible with this mod.' }
-        foreach ($name in @('client-ui.py', 'controller.py', 'controller-devices.py', 'controller-feedback.py', 'controller-combat.py', 'controller-settings.py', 'preferences.json', 'assets/controller-settings.png', 'runtime/SDL3.dll', 'runtime/SDL-LICENSE.txt')) {
+        foreach ($name in @('client-ui.py', 'controller.py', 'controller-devices.py', 'controller-feedback.py', 'controller-context.py', 'controller-combat.py', 'controller-settings.py', 'preferences.json', 'assets/controller-settings.png', 'runtime/SDL3.dll', 'runtime/SDL-LICENSE.txt')) {
             if (-not (Test-Path -LiteralPath (Join-Path $PSScriptRoot $name) -PathType Leaf)) { throw "Missing runtime file: $name" }
         }
         if ($action -eq 'install') { Write-AtomicJson (Join-Path $PSScriptRoot 'activation.json') @{ enabled = $true } }

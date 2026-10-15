@@ -297,7 +297,7 @@
         "minimum": 200,
         "maximum": 2000,
         "step": 50,
-        "description": "Default 500 ms. Hold over a valid space target to open its radial menu; ordinary UI retains hold-to-click and drag. Neocom A selection and B cancellation use this same hold time; D-pad navigation is immediate. Release early to cancel the pending hold."
+        "description": "Default 500 ms. Hold over a valid space target to open its radial menu; ordinary UI retains hold-to-click and drag. Neocom and right-click context menus use this same hold time for RB selection and B cancellation; D-pad navigation is immediate. Release early to cancel the pending hold."
       },
       {
         "id": "rightStickStopMilliseconds",
@@ -329,7 +329,7 @@
         "minimum": 500,
         "maximum": 3000,
         "step": 100,
-        "description": "Default 1000 ms. Hold the Close Focused Window input to move to its X, then release after the timer fills to activate the native close button. Early release or interruption returns the cursor to its starting position. Neocom and radial B controls keep their own behavior."
+        "description": "Default 1000 ms. Hold the Close Focused Window input to move to its X, then release after the timer fills to activate the native close button. Early release or interruption returns the cursor to its starting position. Neocom, context-menu and radial B controls keep their own behavior."
       },
       {
         "id": "invertCameraPan",

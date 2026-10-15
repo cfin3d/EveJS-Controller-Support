@@ -144,7 +144,7 @@ The feature is disabled by default while gameplay validation is pending. This fi
 | Control | Action |
 | :--- | :--- |
 | <img src="assets/buttons/left-stick.svg" width="28" height="28" alt="Left Stick"> **Left Stick** | Move the cursor. Small movements are precise; full deflection is fast. |
-| <img src="assets/buttons/lb.svg" width="28" height="28" alt="Left Bumper"> **Left Bumper** | Hold **0.5 seconds** for right-click. |
+| <img src="assets/buttons/lb.svg" width="28" height="28" alt="Left Bumper"> **Left Bumper** | Hold **0.5 seconds** for right-click. Its context menu starts controller navigation automatically. |
 | <img src="assets/buttons/rb.svg" width="28" height="28" alt="Right Bumper"> **Right Bumper** | Hold **0.5 seconds** over a target to open its radial menu. On normal UI, hold for left-click and continue holding to drag. |
 | <img src="assets/buttons/view.svg" width="28" height="28" alt="Select / View"> **Select / View** | Open controller navigation in the Neocom menu. |
 | <img src="assets/buttons/b.svg" width="28" height="28" alt="B"> **B — Hold, Then Release** | Move to the focused window's X; release after **one second** to close it. Release early to cancel and return the cursor. |
@@ -155,12 +155,26 @@ The feature is disabled by default while gameplay validation is pending. This fi
 
 These are the default bindings. Release a bumper early to cancel its click. A long right-stick hold stops the ship without first issuing flight.
 
+### Right-Click Context Menus
+
+Open a context menu with **LB**. The cursor moves smoothly to its first enabled item and stays within the active menu panel.
+
+| Control While Open | Action |
+| :--- | :--- |
+| <img src="assets/buttons/dpad-up.svg" width="28" height="28" alt="D-Pad Up"> <img src="assets/buttons/dpad-down.svg" width="28" height="28" alt="D-Pad Down"> **D-Pad Up / Down** | Move between enabled items immediately; hold to repeat. |
+| <img src="assets/buttons/dpad-right.svg" width="28" height="28" alt="D-Pad Right"> **D-Pad Right** | Enter a submenu. |
+| <img src="assets/buttons/dpad-left.svg" width="28" height="28" alt="D-Pad Left"> **D-Pad Left** | Return to the parent menu and its previous item. |
+| <img src="assets/buttons/rb.svg" width="28" height="28" alt="Right Bumper"> **Hold RB** | Select the highlighted action, or enter a submenu-only item. Selecting an action restores normal cursor use. |
+| <img src="assets/buttons/b.svg" width="28" height="28" alt="B"> **Hold B** | Close the whole context menu and return the cursor smoothly to where it opened. |
+
+**RB/B holds default to 0.5 seconds**, using **Click / Activation Hold** in **Settings → Controller**. Release early to cancel a hold; changing items restarts RB's timer. Sticks and other gameplay bindings pause during navigation. Physical mouse/keyboard activity hands the native menu back to mouse control. Menus opened with a physical mouse keep their normal behavior.
+
 ### Focused Window Navigation
 
 - **Right Stick Up/Down:** scroll the focused window's list or scrollbar. Move left/right for a pane with a horizontal scrollbar. No activation hold is required.
 - **Map / Ship Tree:** pan in all directions. Hold **LT + Right Stick Up/Down** to zoom the focused view; Ship Tree retains its native two zoom levels.
 - **Multiple Panes:** the pane under the cursor takes priority within the focused window, followed by keyboard focus and the last used pane. The cursor stays where it is.
-- **Priority:** Neocom and radial controls retain their own navigation. Dragging and input detection pause scrolling. A focused menu owns the stick even at a scroll boundary; camera-center flight and stop stay inactive until focus returns to the game view.
+- **Priority:** Neocom, controller context menus and radial controls retain their own navigation. Dragging and input detection pause scrolling. A focused menu owns the stick even at a scroll boundary; camera-center flight and stop stay inactive until focus returns to the game view.
 
 Adjust **Pan / Scroll Speed** in **Settings → Controller → Camera**. Existing camera-pan and zoom bindings apply to focused UI navigation as well. Camera inversion affects the game camera; UI scrolling keeps its normal direction.
 
@@ -174,7 +188,7 @@ With a window such as **Skills**, **Inventory**, **Settings**, **Ship Tree**, or
 | **Released After the Timer Fills** | Uses the native X action once; stays where the X was after successful closure. |
 | **Interrupted or No Longer Closable** | Cancels the action and restores the starting position. |
 
-Set **Window Close Hold** in **Settings → Controller → Hold Timing**; it defaults to **1,000 ms**. Rebind **Close Focused Window** under **Bindings**. Neocom's RB/B holds still use **Click / Activation Hold**, and radial B cancellation stays immediate.
+Set **Window Close Hold** in **Settings → Controller → Hold Timing**; it defaults to **1,000 ms**. Rebind **Close Focused Window** under **Bindings**. Neocom and context-menu RB/B holds use **Click / Activation Hold**, and radial B cancellation stays immediate.
 
 <details>
 <summary><strong>Window Focus, Cancellation, and Existing Bindings</strong></summary>

@@ -244,7 +244,7 @@ class _CombatHUD(object):
 
     def blocked(self):
         ui = self.c.ui
-        if self.c.neocom or self.c.radial or self.c.radial_hold or self.c.radial_gate:
+        if self.c.neocom or self.c.radial or self.c.radial_hold or self.c.radial_gate or getattr(self.c, 'context', None) and self.c.context.active:
             return True
         close = getattr(self.c, 'window_close', None)
         if close and (close.target or close.returning or close.pending):

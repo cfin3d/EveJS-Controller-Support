@@ -285,8 +285,9 @@ def _ec_custom_command(uicore, modifier, key):
 def _ec_custom_execute(uicore, binding):
     if uicore.registry.GetModalWindow() is not None or getattr(getattr(_ec_builtins,'session',None),'mutating',False):
         return
-    command = _ec_custom_command(uicore, binding['modifier'], binding['key'])
-    if command is None or command.name != binding['command'] or not uicore.cmd.IsCommandEnabled(command):
+    command = (_ec_custom_command(uicore, binding['modifier'], binding['key']) if 'modifier' in binding
+               else uicore.cmd.commandMap.GetCommandByName(binding['command']))
+    if command is None or command.name != binding['command'] or not uicore.cmd.IsCommandEnabled(command) or not getattr(uicore.cmd,'IsCommandAllowed',lambda name:True)(command.name):
         return
     uicore.cmd.ExecuteCommand(command)
     if getattr(command,'category',None) == 'combat' and getattr(uicore.cmd,'combatCmdLoaded',None) is command:

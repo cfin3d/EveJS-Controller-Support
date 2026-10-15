@@ -54,20 +54,16 @@ def custom_bindings(document, builtins):
         raise ValueError('Use At Most 32 Custom Bindings')
     result, used = [], set()
     for source in document:
-        if not isinstance(source, dict) or set(source) != set(('id','modifier','key','controller','command')):
+        if not isinstance(source, dict) or set(source) not in (set(('id','controller','command')),set(('id','modifier','key','controller','command'))):
             raise ValueError('Invalid Custom Binding')
         item = dict(source)
         if any(not isinstance(value,TEXT_TYPES) for value in item.values()):
             raise ValueError('Invalid Custom Binding')
         identity = item['id']
-        if not isinstance(identity, type('')):
-            try:
-                if not isinstance(identity, unicode): raise ValueError('Invalid Custom Binding ID')
-            except NameError: raise ValueError('Invalid Custom Binding ID')
         if not identity.startswith('custom-') or not identity[7:].isdigit() or len(identity)>18 or identity in used:
             raise ValueError('Invalid Custom Binding ID')
         used.add(identity)
-        if item['modifier'] not in [value for title,value,codes in SHORTCUT_MODIFIERS] or item['key'] not in dict(SHORTCUT_KEYS):
+        if 'modifier' in item and (item['modifier'] not in [value for title,value,codes in SHORTCUT_MODIFIERS] or item['key'] not in dict(SHORTCUT_KEYS)):
             raise ValueError('Invalid Keyboard Shortcut')
         name = item['command']
         if not name or len(name)>100 or not all(c in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_' for c in name):

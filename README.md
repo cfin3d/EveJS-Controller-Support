@@ -214,7 +214,7 @@ Open a context menu with **LB**. The cursor moves smoothly to its first enabled 
 - **Multiple Panes:** the pane under the cursor takes priority within the focused window, followed by keyboard focus and the last used pane. The cursor stays where it is.
 - **Priority:** Neocom, controller context menus and radial controls retain their own navigation. Dragging and input detection pause scrolling. A focused menu owns the stick even at a scroll boundary; camera-center flight and stop stay inactive until focus returns to the game view.
 
-Adjust **Pan / Scroll Speed** in **Settings → Controller → Camera**. Existing camera-pan and zoom bindings apply to focused UI navigation as well. Camera inversion affects the game camera; UI scrolling keeps its normal direction.
+Adjust **Pan / Scroll Speed** in **Settings → Controller → General → Camera**. Existing camera-pan and zoom bindings apply to focused UI navigation as well. Camera inversion affects the game camera; UI scrolling keeps its normal direction.
 
 ### Close Focused Windows
 
@@ -226,7 +226,7 @@ With a window such as **Skills**, **Inventory**, **Settings**, **Ship Tree**, or
 | **Released After the Timer Fills** | Uses the native X action once; stays where the X was after successful closure. |
 | **Interrupted or No Longer Closable** | Cancels the action and restores the starting position. |
 
-Set **Window Close Hold** in **Settings → Controller → Hold Timing**; it defaults to **1,000 ms**. Rebind **Close Focused Window** under **Bindings**. Neocom and context-menu RB/B holds use **Click / Activation Hold**, and radial B cancellation stays immediate.
+Set **Window Close Hold** in **Settings → Controller → General → Hold Timing**; it defaults to **1,000 ms**. Rebind **Close Focused Window** under **Bindings**. Neocom and context-menu RB/B holds use **Click / Activation Hold**, and radial B cancellation stays immediate.
 
 <details>
 <summary><strong>Window Focus, Cancellation, and Existing Bindings</strong></summary>
@@ -310,19 +310,22 @@ In EVE, open **Settings → Controller**. Changes save and apply automatically.
 
 | Option | Use |
 | :--- | :--- |
-| **Controller** | Auto-detect or choose a connected device. **Identify Controller** selects the device you use next. |
-| **Button Icons** | Automatically match the active device, or choose Xbox, PlayStation 4/5, or Steam when a mapper hides its identity. |
-| **Lock Controller Mode** | Stay in controller mode during mouse/keyboard use, retaining controller navigation focus and holds. Off by default; also available in the launcher and saved profiles. |
-| **Camera** | Adjust pan/zoom speed and toggle **Invert Camera Pan** for vertical panning. |
-| **Cursor and Hold Timing** | Adjust precision, UI attraction, cursor appearance, and click/stop/window-close timing. |
-| **Vibration** | Enable/disable all feedback, adjust overall and event strengths, toggle damage/destruction effects, and test or stop vibration. |
-| **Bindings** | Compact white button icons show each input or combination. Rebind an action or clear its input; conflicts show a confirmation before replacing the previous assignment. |
-| **Custom Bindings** | Choose a modifier and keyboard key, capture a controller button/combination, then select **Add Binding**. |
+| **General → Input Device** | Auto-detect or select a controller, identify it, choose button icons and toggle **Lock Controller Mode**. |
+| **General → Camera** | Adjust pan/zoom speed and toggle **Invert Camera Pan** for vertical panning. |
+| **General → Cursor** | Adjust precision, speed, UI attraction and cursor appearance. |
+| **General → Hold Timing** | Adjust click/stop/window-close timing and trigger activation. |
+| **General → Vibration** | Enable/disable all feedback, adjust overall and event strengths, toggle damage/destruction effects, and test or stop vibration. |
+| **Overview** | Adjust focused-row expansion and toggle smooth transitions on its own page. |
+| **Bindings → General Actions** | Rebind or clear actions grouped under **Cursor And Clicks**, **Camera And Flight**, and **Menus And Windows**. Each row shows its function, input and activation behavior. |
+| **Bindings → Custom Shortcuts** | Browse or search EVE functions by category, review descriptions and current/default keyboard shortcuts, then capture a controller input and select **Add Binding**. |
+| **Bindings → Context Categories** | Browse **Overview**, **Neocom**, **Context Menus**, **Target Radial**, and **Combat Modules** for their fixed controls and functions, including all sixteen module combinations. Shared actions follow your current bindings. |
 | **Profiles** | Save, load, or delete named configurations; **Restore Defaults** restores the default controls and feel. |
+
+Use **Settings Page** to choose **General**, **Overview**, **Bindings** or **Profiles**. General groups the basic settings under spaced headings on one scrolling page. Within **Bindings**, use **Binding Category** to choose editable actions, custom shortcuts or a context reference. White icons show combinations with **+** and alternative inputs with **/**. Input activity and **Cancel Input Detection** stay above the scrolling page.
 
 ### Vibration Feedback
 
-In **Settings → Controller → Vibration**, use **Enable Vibration** as the master toggle. **Test Vibration** previews enabled patterns on the selected controller; **Stop Vibration** ends the preview. No gameplay action is required to test it.
+In **Settings → Controller → General → Vibration**, use **Enable Vibration** as the master toggle. **Test Vibration** previews enabled patterns on the selected controller; **Stop Vibration** ends the preview. No gameplay action is required to test it.
 
 | Event | Feedback |
 | :--- | :--- |
@@ -378,12 +381,15 @@ Only incoming damage to the ship you are currently piloting activates combat fee
 <details>
 <summary><strong>Custom Shortcuts and Conflicts</strong></summary>
 
-- Uses keyboard shortcuts configured in **Settings → Shortcuts**. The editor shows the EVE action assigned to the selected modifier/key; configure an unassigned shortcut there first.
+- **EVE Action:** select an **Action Category**, search functions/descriptions, and choose an **EVE Function**. The list comes from the running client's native command catalog, including functions without keyboard assignments. Review its description and **Current Shortcut / Default Shortcut**, choose a controller input or combination, then select **Add Binding**.
+- Native categories include **Window**, **Combat**, **General**, **Navigation**, **Modules**, **Drones**, **Fighters**, and **Character Creation**. The client supplies localized names and available detailed descriptions, with concise explanations for common actions where EVE provides no longer description. **Refresh** rereads the catalog and current keyboard assignments.
+- Action bindings follow the selected EVE function even if its keyboard shortcut changes or is unassigned. They do not modify EVE's keyboard shortcuts.
+- **Keyboard Shortcut (Advanced):** the original modifier/key editor remains available. It resolves shortcuts configured in **Settings → Shortcuts** and retains the original function identity; configure an unassigned keyboard shortcut there first. Existing saved shortcut bindings retain this behavior.
 - Custom actions run once per controller press through EVE's native command dispatcher. They pause in Settings, during input capture, and while the controller radial is open.
 - Selecting an existing custom row opens it for editing; **Remove** deletes it. Custom bindings are included in saved profiles.
 - **Replace Binding** removes the conflicting controller assignments and saves the new one. **Cancel** leaves the existing configuration intact.
 - A replacement can disable a core controller action. The dialog names affected actions and explains when replacing left-click requires mouse/keyboard to configure a replacement.
-- Supports up to **32 custom bindings**. If an EVE shortcut later changes to another action, the old custom binding does not execute that new action automatically.
+- Supports up to **32 custom bindings** across both methods. Missing or unavailable functions do not execute, and a changed keyboard assignment cannot redirect an existing binding to a different function.
 
 </details>
 

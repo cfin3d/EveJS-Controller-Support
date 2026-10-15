@@ -195,7 +195,7 @@ class _OverviewNavigation(object):
     def safe(self):
         c = self.c
         return (c.active and c.mode.mode == 'controller' and c.native.foreground() and
-                not getattr(c.native, 'pending', False) and not getattr(c.native, 'physical_buttons', None) and
+                (c.settings.get('controllerModeLocked', False) or not getattr(c.native, 'pending', False) and not getattr(c.native, 'physical_buttons', None)) and
                 not getattr(c.ui, 'dragObject', None) and c.ui.registry.GetModalWindow() is None and
                 not getattr(getattr(_ec_builtins, 'session', None), 'mutating', False) and self.stamp == self.identity())
 
@@ -746,7 +746,7 @@ class _OverviewNavigation(object):
                 c = self.c
                 if not rising or settings_open or c.radial_gate or c.neocom or c.radial or c.radial_hold or c.context and (c.context.active or c.context.pending):return False
                 if c.context and c.context.roots():return False
-                if getattr(c.native, 'pending', False) or getattr(c.native, 'physical_buttons', None):return False
+                if not c.settings.get('controllerModeLocked', False) and (getattr(c.native, 'pending', False) or getattr(c.native, 'physical_buttons', None)):return False
                 if c.ui.registry.GetModalWindow() is not None or getattr(c.ui, 'dragObject', None):return False
                 window = self.choose_window()
                 if window is None:return False

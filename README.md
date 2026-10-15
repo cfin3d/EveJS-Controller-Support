@@ -109,12 +109,12 @@ mods/
 | **Controller Mode** | Use a controller input. |
 | **Mouse/Keyboard Mode** | Move, click, or scroll the mouse, or use the keyboard. |
 
-Switching is automatic. Mouse/keyboard input cancels unfinished controller holds and restores the normal pointer.
+Switching is automatic by default. Mouse/keyboard input cancels unfinished controller holds and restores the normal pointer. Enable **Lock Controller Mode** in **Settings → Controller** or the launcher to stay in controller mode during mouse/keyboard use. With the lock on, physical input cannot switch modes, release controller navigation focus or interrupt controller holds and queued actions. The lock applies while EVE is focused and a controller is connected.
 
 <details>
-<summary><strong>Experimental Combat HUD</strong></summary>
+<summary><strong>Combat HUD</strong></summary>
 
-New installs keep this feature off, including development builds. Turn on **Enable Combat HUD (Experimental)** under **Settings → Controller** to try the native layout in space. It starts with sixteen empty fixed slots; drag modules from the live fitting window onto them, move shortcuts between slots, or drag them onto empty space to clear them. Assignments are remembered for each individual ship. Removing a shortcut leaves the module fitted.
+The overhauled HUD is included in controller mode with no separate toggle. It starts with sixteen empty fixed slots; drag modules from the live fitting window onto them, move shortcuts between slots, or drag them onto empty space to clear them. Assignments are remembered for each individual ship. Removing a shortcut leaves the module fitted.
 
 For assigned active modules, tap the trigger/button combination to cycle **Activate → Deactivate → Offline → Online → Repeat**. Short taps act on release without waiting for the overload timer or bank animation. Each step follows the module's actual state; wait for deactivation to finish before the offline step. Native offline confirmations and online requirements remain in effect, including weapon-group warnings. A canceled or failed transition stays on the same step. Hold the combination for one second to toggle overload without advancing the tap cycle.
 
@@ -122,7 +122,7 @@ The controller cursor retains native module tooltips and right-click menus. Nati
 
 Holding LT or RT smoothly enlarges that bank by 5% and dims the opposite bank to 60% opacity over 160 ms. Release restores both banks. Fixed button prompts use matching white artwork and opaque dark backings: circular badges for module buttons and shaped backings for the triggers.
 
-The banks and native gauge share one center axis. A centered utility strip includes cargo, scanners, tactical overlay, all three camera controls, autopilot, safety and HUD options, plus the Mining Surveyor, native zoom and weapon-group controls when available. The stock module rack stays hidden while the controller HUD is active. Undocking and native HUD rebuilds restore and reattach controls; an experimental HUD error falls back without stopping normal controller input.
+The banks and native gauge share one center axis. A centered utility strip includes cargo, scanners, tactical overlay, all three camera controls, autopilot, safety and HUD options, plus the Mining Surveyor, native zoom and weapon-group controls when available. The stock module rack stays hidden while the controller HUD is active. Undocking and native HUD rebuilds restore and reattach controls; a HUD error falls back without stopping normal controller input.
 
 EVE applies UI scaling to the native controls. Layout uses the resulting **logical UI size**, so a higher scale leaves less space even at the same screen resolution. Module sizes and assignments stay unchanged between layouts.
 
@@ -134,11 +134,11 @@ EVE applies UI scaling to the native controls. Layout uses the resulting **logic
 
 The complete HUD follows EVE's camera and saved HUD offsets, including top/bottom alignment. Near the screen edges, the assembly is kept inside the viewport with an eight-pixel logical margin. The camera offset and native HUD preferences are preserved. Resolution and UI-scale changes re-evaluate the layout automatically; changing layouts cancels pending module presses without changing assignments.
 
-The feature is disabled by default while gameplay validation is pending. This first implementation supports assignment in space; docked fitting integration remains in development. Turning the feature off or switching to mouse/keyboard restores the original HUD.
+Module assignment is supported in space; docked fitting integration remains in development. Automatic switching to mouse/keyboard restores the original HUD. With **Lock Controller Mode** enabled, the controller layout remains visible during mouse/keyboard use. Disconnection, loss of game focus or disabling the mod restores native presentation.
 
 </details>
 
-![Experimental Combat HUD](assets/combat-hud.jpg)
+![Combat HUD](assets/combat-hud.jpg)
 
 ### Controls
 
@@ -187,7 +187,7 @@ The focused row smoothly grows, pushing neighboring rows apart. Columns stay ali
 - Native tab order, renamed tabs, filters, column widths, window placement, fonts and UI scaling remain under EVE's control. With multiple open Overviews, the hovered Overview takes priority, followed by the last used visible Overview.
 - Focus follows an object's identity through sorting. If it disappears, pending holds are canceled; use fresh D-pad input to choose another object.
 - Mouse/keyboard takeover, window closure, session changes and native modal dialogs cancel Overview focus and restore row sizes. Held buttons and triggers must be released before ordinary actions resume.
-- Mouse/keyboard takeover restores the original Overview presentation. Returning to controller mode restores its prompts across all visible Overview windows.
+- With automatic switching, mouse/keyboard takeover restores the original Overview presentation. **Lock Controller Mode** preserves its controller presentation, navigation focus and holds during mouse/keyboard use. Controller focus-exit controls remain available.
 
 </details>
 
@@ -203,7 +203,7 @@ Open a context menu with **LB**. The cursor moves smoothly to its first enabled 
 | <img src="assets/buttons/rb.svg" width="28" height="28" alt="Right Bumper"> **Hold RB** | Select the highlighted action, or enter a submenu-only item. Overview object menus resume Overview navigation; other menus restore normal cursor use. |
 | <img src="assets/buttons/b.svg" width="28" height="28" alt="B"> **Hold B** | Close the whole context menu and return the cursor smoothly to where it opened. |
 
-**RB/B holds default to 0.5 seconds**, using **Click / Activation Hold** in **Settings → Controller**. Release early to cancel a hold; changing items restarts RB's timer. The cursor stick moves freely inside the menu and its open submenus; moving outside closes the menu and releases focus without returning the cursor. D-pad input resumes row navigation. Camera and other gameplay bindings pause during navigation. Physical mouse/keyboard activity hands the native menu back to mouse control. Menus opened with a physical mouse keep their normal behavior.
+**RB/B holds default to 0.5 seconds**, using **Click / Activation Hold** in **Settings → Controller**. Release early to cancel a hold; changing items restarts RB's timer. The cursor stick moves freely inside the menu and its open submenus; moving outside closes the menu and releases focus without returning the cursor. D-pad input resumes row navigation. Camera and other gameplay bindings pause during navigation. With automatic switching, physical mouse/keyboard activity hands the native menu back to mouse control. **Lock Controller Mode** retains controller ownership and hold progress. Menus opened with a physical mouse keep their normal behavior.
 
 ### Focused Window Navigation
 
@@ -310,6 +310,7 @@ In EVE, open **Settings → Controller**. Changes save and apply automatically.
 | :--- | :--- |
 | **Controller** | Auto-detect or choose a connected device. **Identify Controller** selects the device you use next. |
 | **Button Icons** | Automatically match the active device, or choose Xbox, PlayStation 4/5, or Steam when a mapper hides its identity. |
+| **Lock Controller Mode** | Stay in controller mode during mouse/keyboard use, retaining controller navigation focus and holds. Off by default; also available in the launcher and saved profiles. |
 | **Camera** | Adjust pan/zoom speed and toggle **Invert Camera Pan** for vertical panning. |
 | **Cursor and Hold Timing** | Adjust precision, UI attraction, cursor appearance, and click/stop/window-close timing. |
 | **Vibration** | Enable/disable all feedback, adjust overall and event strengths, toggle damage/destruction effects, and test or stop vibration. |
@@ -349,6 +350,7 @@ Only incoming damage to the ship you are currently piloting activates combat fee
 | Setting | Default |
 | :--- | :--- |
 | Controller | Auto-Detect |
+| Lock Controller Mode | Off (Automatic Switching) |
 | Stick Deadzone | 20% |
 | Maximum Cursor Speed | 1,100 px/s |
 | Camera Movement Speed | 800 |

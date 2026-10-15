@@ -17,6 +17,8 @@ def _ec_focus_pointer(controller, axes, now, panels, state):
         controller.motion.reset()
         controller.magnet.reset()
     if not state.get('manual'):return 0
+    if controller.settings.get('controllerModeLocked', False) and state.get('point') is not None and controller.native.position() != state['point']:
+        controller.native.move(*state['point'])
     vx, vy = controller.motion.step(axes[0], axes[1], dt)
     vx = vx*controller.settings['cursorSpeed']*dt + state['x']
     vy = -vy*controller.settings['cursorSpeed']*dt + state['y']
@@ -70,7 +72,7 @@ class _ContextNavigation(object):
     def safe(self):
         c = self.c
         return (c.active and c.mode.mode == 'controller' and c.native.foreground() and
-                not getattr(c.native, 'pending', False) and not getattr(c.native, 'physical_buttons', None) and
+                (c.settings.get('controllerModeLocked', False) or not getattr(c.native, 'pending', False) and not getattr(c.native, 'physical_buttons', None)) and
                 not getattr(c.ui, 'dragObject', None) and not getattr(getattr(_ec_builtins, 'session', None), 'mutating', False) and
                 self.stamp == self.snapshot() and (self.owner is None or self.owner.context_valid()))
 

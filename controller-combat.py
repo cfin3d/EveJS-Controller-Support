@@ -671,7 +671,7 @@ class _CombatHUD(object):
             try:
                 if not self.c.active or self.c.mode.mode != 'controller' or not self.c.native.foreground():
                     return
-                if getattr(self.c.native, 'pending', False):
+                if not self.c.settings.get('controllerModeLocked', False) and getattr(self.c.native, 'pending', False):
                     return
                 if self.blocked() or self.target(token[2]) != token:
                     return
@@ -842,7 +842,7 @@ class _CombatHUD(object):
     def route(self, pad, now, active=True):
         self.reserved &= pad[0]
         mask = pad[0] | (0x10000 if pad[5] >= self.c.settings['triggerThreshold'] else 0) | (0x20000 if pad[6] >= self.c.settings['triggerThreshold'] else 0)
-        if not active or not self.c.settings.get('combatHudEnabled', False):
+        if not active:
             self.detach(mask)
             return self.filtered(pad)
         if now < self.retry_at:

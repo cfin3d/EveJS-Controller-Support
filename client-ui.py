@@ -209,7 +209,7 @@ def _ec_ui_navigate(controller, x, y, zoom, dt):
         # Focus owns the stick even at an edge or during a transient load. Never
         # fall through from a focused menu to the ship camera or flight actions.
         if (getattr(getattr(_ec_builtins,'session',None),'mutating',False) or getattr(ui,'dragObject',None) is not None or
-                getattr(controller.native,'owned',None) or getattr(controller.native,'physical_buttons',None) or getattr(controller.native,'pending',False)):
+                getattr(controller.native,'owned',None) or not controller.settings.get('controllerModeLocked',False) and (getattr(controller.native,'physical_buttons',None) or getattr(controller.native,'pending',False))):
             state.pop('tail',None);return True
         if not (x or y or zoom):state.pop('tail',None);state.pop('zoom',None)
         speed=controller.settings['cameraSpeed']*max(0.,min(.05,dt))
@@ -377,7 +377,7 @@ def _ec_radial_install(controller):
     original = service.TryExpandActionMenu
     def guarded(*args, **kwargs):
         native = controller.native
-        if controller.active and controller.mode.mode == 'controller' and getattr(native, 'owned', set()) and not getattr(native, 'pending', False):
+        if controller.active and controller.mode.mode == 'controller' and getattr(native, 'owned', set()) and (controller.settings.get('controllerModeLocked', False) or not getattr(native, 'pending', False)):
             return None
         return original(*args, **kwargs)
     service.TryExpandActionMenu = guarded

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "controllerIndex": -1,
   "controllerIcons": "auto",
-  "combatHudEnabled": false,
+  "controllerModeLocked": false,
   "vibrationEnabled": true,
   "vibrationStrength": 0.65,
   "damageVibration": true,

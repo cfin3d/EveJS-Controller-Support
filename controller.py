@@ -29,7 +29,7 @@ ACTIONS = [('cursor', 'Move Cursor'), ('cameraPan', 'Pan Camera / Focused UI'),
 DEFAULT_BINDINGS = dict(cursor='LEFT_STICK', cameraPan='RIGHT_STICK',
                         cameraZoom='LT+RIGHT_STICK_Y', leftClick='RB', rightClick='LB', fly='RS', stop='RS',neocom='VIEW',overview='MENU',closeWindow='B')
 DEFAULTS = dict(schemaVersion=1, controllerIndex=-1, controllerIcons='auto', deadzone=.20, cursorSpeed=1100,
-                combatHudEnabled=False, overviewRowExpansion=34, overviewAnimations=True,
+                controllerModeLocked=False, overviewRowExpansion=34, overviewAnimations=True,
                 cameraSpeed=800, cursorRing=True, cursorSnap=True, snapRadius=28,
                 snapMaxSpeed=250, clickHoldMilliseconds=500, rightStickStopMilliseconds=1000, windowCloseHoldMilliseconds=1000,
                 invertCameraPan=False, cameraZoomSpeed=.8, triggerThreshold=40,
@@ -163,6 +163,7 @@ def axes(action, pad, settings):
 def preferences(document):
     result = dict(DEFAULTS)
     result.update(document)
+    result.pop('combatHudEnabled', None)
     if result['schemaVersion'] != 1:
         raise ValueError('Unsupported preferences version')
     ranges = dict(controllerIndex=(-1, 15), deadzone=(.05, .5), cursorSpeed=(100, 4000),
@@ -178,7 +179,7 @@ def preferences(document):
         if int(result[name]) != result[name]:
             raise ValueError('Invalid ' + name)
         result[name] = int(result[name])
-    for name in ('cursorRing', 'cursorSnap', 'invertCameraPan','vibrationEnabled','damageVibration','destructionVibration','dualsenseHaptics','combatHudEnabled','overviewAnimations'):
+    for name in ('cursorRing', 'cursorSnap', 'invertCameraPan','vibrationEnabled','damageVibration','destructionVibration','dualsenseHaptics','controllerModeLocked','overviewAnimations'):
         if not isinstance(result[name], bool):
             raise ValueError('Invalid ' + name)
     if result['controllerIcons'] not in ('auto','xbox','ps4','ps5','steam'):
@@ -267,7 +268,7 @@ class WindowCloseGesture(object):
     def valid_attempt(self,attempt):
         c=self.controller
         if not c.active or self.pending is not attempt or self.serial!=attempt['serial'] or self.identity()!=attempt['identity']:return False
-        if not c.native.foreground() or c.mode.mode!='controller' or getattr(c.native,'pending',False):return False
+        if not c.native.foreground() or c.mode.mode!='controller' or not c.settings['controllerModeLocked'] and getattr(c.native,'pending',False):return False
         return c.native.bounds()==attempt['bounds'] and c.settings['bindings']['closeWindow']==attempt['binding'] and c.settings['windowCloseHoldMilliseconds']==attempt['duration'] and c.helpers['_ec_window_close_valid'](c.ui,attempt['target'])
 
     def finish(self,attempt,closed):
@@ -298,7 +299,7 @@ class WindowCloseGesture(object):
             finder=c.helpers.get('_ec_window_close_target')
             target=finder(c.ui) if finder else None
             if target is None:return False
-            if extra or getattr(c.native,'owned',None) or getattr(c.native,'physical_buttons',None):self.gate=True;return True
+            if extra or getattr(c.native,'owned',None) or not settings['controllerModeLocked'] and getattr(c.native,'physical_buttons',None):self.gate=True;return True
             self.serial+=1;self.pending=None
             self.target,self.origin,self.started=target,c.native.position(),now
             self.snapshot=(self.identity(),value,settings['windowCloseHoldMilliseconds'],c.native.bounds())
@@ -354,6 +355,10 @@ class InputMode(object):
         neutral = input_mask(pad, settings) == 0 and stick(pad[1], pad[2], settings['deadzone']) == (0., 0.) and stick(pad[3], pad[4], settings['deadzone']) == (0., 0.)
         old = self.previous
         self.previous = pad
+        if settings.get('controllerModeLocked', False):
+            self.mode = 'controller'
+            if neutral:self.ready = True;self.anchor = pad
+            return True
         if not self.ready:
             if neutral:
                 self.ready = True
@@ -1110,7 +1115,11 @@ class Controller(object):
             if pad is not None and input_mask(pad,self.settings) == 0 and stick(pad[1],pad[2],self.settings['deadzone']) == (0.,0.) and stick(pad[3],pad[4],self.settings['deadzone']) == (0.,0.):
                 self.radial_gate = False
             return
-        self.focus_gate = getattr(self,'focus_gate',0) & input_mask(pad,self.settings)
+        if self.settings['controllerModeLocked'] and not self.mode.ready:
+            self.cancel(preserve_ui=True)
+            self.focus_gate = input_mask(pad,self.settings)
+            pad = (0,)*7
+        self.focus_gate = getattr(self,'focus_gate',0) & input_mask(self.mode.previous or pad,self.settings)
         if self.focus_gate:pad=(pad[0] & ~self.focus_gate,)+pad[1:5]+(0 if self.focus_gate & 0x10000 else pad[5],0 if self.focus_gate & 0x20000 else pad[6])
         menu_layer = getattr(getattr(self.ui, 'layer', None), 'systemmenu', None)
         settings_open = bool(menu_layer is not None and getattr(menu_layer, 'display', False) and

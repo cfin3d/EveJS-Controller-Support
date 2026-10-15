@@ -113,11 +113,15 @@ Switching is automatic. Mouse/keyboard input cancels unfinished controller holds
 <details>
 <summary><strong>Experimental Combat HUD</strong></summary>
 
-Enable **Combat HUD** in **Settings → Controller** to test the native layout in space. It starts with sixteen empty fixed slots; drag modules from the live fitting window onto them, move shortcuts between slots, or drag them onto empty space to clear them. Assignments are remembered for each individual ship. Removing a shortcut leaves the module fitted.
+New installs keep this feature off, including development builds. Turn on **Enable Combat HUD (Experimental)** under **Settings → Controller** to try the native layout in space. It starts with sixteen empty fixed slots; drag modules from the live fitting window onto them, move shortcuts between slots, or drag them onto empty space to clear them. Assignments are remembered for each individual ship. Removing a shortcut leaves the module fitted.
 
-Assigned active modules use a short trigger/button tap to toggle activation and a one-second hold to toggle overload. The controller cursor retains native module tooltips and right-click menus. Native menus take priority over module gestures; both triggers held together suppress direct module actions. Existing camera zoom and bumper clicks remain available.
+For assigned active modules, tap the trigger/button combination to cycle **Activate → Deactivate → Offline → Online → Repeat**. Short taps act on release without waiting for the overload timer or bank animation. Each step follows the module's actual state; wait for deactivation to finish before the offline step. Native offline confirmations and online requirements remain in effect, including weapon-group warnings. A canceled or failed transition stays on the same step. Hold the combination for one second to toggle overload without advancing the tap cycle.
 
-The banks and native gauge share one center axis. A centered utility strip includes cargo, scanners, tactical overlay, all three camera controls, autopilot, safety and HUD options, plus native zoom and weapon-group controls when available. The stock module rack stays hidden while the controller HUD is active. Undocking and native HUD rebuilds restore and reattach controls; an experimental HUD error falls back without stopping normal controller input.
+The controller cursor retains native module tooltips and right-click menus. Native menus take priority over module gestures; both triggers held together suppress direct module actions. Existing camera zoom and bumper clicks remain available. Input takeover, ship changes and HUD rebuilds resynchronize the tap cycle from the module's current state; passive modules retain their native cursor controls.
+
+Holding LT or RT smoothly enlarges that bank by 5% and dims the opposite bank to 60% opacity over 160 ms. Release restores both banks. Fixed button prompts use matching white artwork and opaque dark backings: circular badges for module buttons and shaped backings for the triggers.
+
+The banks and native gauge share one center axis. A centered utility strip includes cargo, scanners, tactical overlay, all three camera controls, autopilot, safety and HUD options, plus the Mining Surveyor, native zoom and weapon-group controls when available. The stock module rack stays hidden while the controller HUD is active. Undocking and native HUD rebuilds restore and reattach controls; an experimental HUD error falls back without stopping normal controller input.
 
 EVE applies UI scaling to the native controls. Layout uses the resulting **logical UI size**, so a higher scale leaves less space even at the same screen resolution. Module sizes and assignments stay unchanged between layouts.
 

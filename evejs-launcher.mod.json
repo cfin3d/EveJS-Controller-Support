@@ -249,7 +249,7 @@
         ],
         "restart": "none",
         "group": "Combat HUD",
-        "description": "Fixed module slots with per-ship memory, direct trigger controls and native context menus. Disabled by default while in-game validation is pending."
+        "description": "Fixed module slots with per-ship memory. Tap cycles Activate, Deactivate, Offline, Online; hold toggles overload. Native confirmations and menus remain available. Off by default on new installs, including development builds."
       },
       {
         "id": "snapRadius",

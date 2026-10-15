@@ -82,7 +82,8 @@ def write_preferences(directory, patch, validate, expected=None):
 def prepare_button_icons(directory):
     import blue
     icons = {}
-    for name in set(BUTTON_ICONS.values()) | set('playstation/'+name for name in PS_ICON_FILES):
+    combat_icons = {'combat-trigger-backdrop'} | set('combat-dpad-'+direction for direction in ('up','right','down','left'))
+    for name in set(BUTTON_ICONS.values()) | set('playstation/'+name for name in PS_ICON_FILES) | combat_icons:
         resource = 'cache:/evejs-controller/buttons/' + name + '.png'
         destination = blue.paths.ResolvePathForWriting(resource)
         folder = os.path.dirname(destination)
@@ -295,7 +296,7 @@ class ControllerSettings(object):
         self.pair(panel, [('snapRadius','Attraction Radius (px)',8,64,1),('snapMaxSpeed','Attraction Speed Limit (px/s)',50,600,10)])
         self.Header(parent=panel, text='Combat HUD', padTop=12)
         self.check(panel, 'combatHudEnabled', 'Enable Combat HUD (Experimental)',
-                   'Fixed Module Slots With Ship Memory; Drag Fitted Modules On Or Off; Native Module Menus')
+                   'Tap: Activate, Deactivate, Offline, Online; Hold: Overload; Native Confirmations And Module Menus')
         self.Header(parent=panel, text='Hold Timing', padTop=12)
         self.pair(panel, [('clickHoldMilliseconds','Click / Activation Hold (ms)',200,2000,50),('rightStickStopMilliseconds','Stop Hold (ms)',500,3000,100)])
         self.pair(panel, [('triggerThreshold','Trigger Activation',10,240,5),('windowCloseHoldMilliseconds','Window Close Hold (ms)',500,3000,100)])

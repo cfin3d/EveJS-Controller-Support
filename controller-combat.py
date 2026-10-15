@@ -153,6 +153,9 @@ class _CombatOwnedNode(object):
         self.index = siblings.index(node) if node in siblings else 0
         self.geometry = dict((name, getattr(node, name)) for name in
                              ('align', 'left', 'top', 'width', 'height', 'display', 'state')) if geometry else {}
+        if geometry:
+            self.geometry.update((name, getattr(node, name)) for name in
+                                 ('padLeft', 'padTop', 'padRight', 'padBottom') if hasattr(node, name))
         self.handlers = []
 
     def hook(self, name, function):
@@ -180,6 +183,21 @@ class _CombatOwnedNode(object):
         if errors:raise errors[0]
 
 
+class _CombatTapCycle(object):
+    """Advance from observed native states, never from an attempted command."""
+    def __init__(self):
+        self.steps = {}
+
+    def observe(self, key, online, active):
+        step = self.steps.get(key, 'activate')
+        if not online:step = 'online'
+        elif active:step = 'deactivate'
+        elif step == 'deactivate':step = 'offline'
+        elif step == 'online':step = 'activate'
+        self.steps[key] = step
+        return step
+
+
 class _CombatHUD(object):
     def __init__(self, controller, api=None):
         self.c, self.api = controller, api
@@ -189,6 +207,7 @@ class _CombatHUD(object):
         self.bank_prompts = []
         self.identity, self.store, self.assignments, self.fitted = None, None, [None] * 16, {}
         self.gestures = _CombatGestures()
+        self.tap_cycle, self.actions_pending = _CombatTapCycle(), set()
         self.epoch, self.last_scan, self.retry_at = 0, -1., 0.
         self.ready, self.dragging, self.failed = False, None, False
         self.signature = None
@@ -199,6 +218,8 @@ class _CombatHUD(object):
         self.pending_owners, self.retired_roots = [], []
         self.cleanup_failed = False
         self.viewport = None
+        self.focus_bank, self.focus_started = None, 0.
+        self.focus, self.focus_from = (0., 0.), (0., 0.)
 
     def session_identity(self):
         session = getattr(_ch_builtins, 'session', None)
@@ -210,12 +231,13 @@ class _CombatHUD(object):
             import carbonui.const as const
             from carbonui.primitives.container import Container
             from carbonui.primitives.sprite import Sprite
+            from carbonui.primitives.transform import Transform
             from carbonui.primitives.vectorlinetrace import VectorLineTrace
             from eve.client.script.ui.control.eveLabel import EveLabelSmall
             from eve.client.script.ui.inflight.shipHud.shipSlot import ShipSlot
             from eve.client.script.ui.inflight.shipModuleButton.shipmodulebutton import ModuleButton
             from util import KeyVal
-            self.api = dict(const=const, Container=Container, Sprite=Sprite,
+            self.api = dict(const=const, Container=Container, Sprite=Sprite, Transform=Transform,
                             Line=VectorLineTrace, Label=EveLabelSmall,
                             ShipSlot=ShipSlot, ModuleButton=ModuleButton, KeyVal=KeyVal)
         return self.api
@@ -285,6 +307,32 @@ class _CombatHUD(object):
         if width >= 768 and height >= 616:return min(800, int(width)-16), 600, True
         return None
 
+    def button_prompt(self, token, cx, cy, icon_size):
+        api, k = self.native_api(), self.api['const']
+        size = icon_size + 6
+        prompt = api['Container'](parent=self.root, name='evejsCombatPrompt'+token,
+                    align=k.TOPLEFT, left=cx-size/2., top=cy-size/2.,
+                    width=size, height=size, state=k.UI_DISABLED, opacity=1.)
+        # Native slot centers are RGB 64. Keep this solid backing independent
+        # of bank emphasis so bright scenery cannot show through the glyph.
+        trigger = token in ('LT', 'RT')
+        background = self.c.menu.button_icons['combat-trigger-backdrop'] if trigger else (
+                     'res:/UI/Texture/classes/ShipUI/slotSolidBackground.png')
+        placement = dict(align=k.TOPLEFT, left=3, top=3, width=icon_size, height=icon_size) if trigger else dict(align=k.TOALL)
+        prompt.backdrop = api['Sprite'](parent=prompt, texturePath=background,
+                    color=(64/255., 64/255., 64/255., 1.), opacity=1., state=k.UI_DISABLED, **placement)
+        path = self.icon(token)
+        if token in ('UP', 'RIGHT', 'DOWN', 'LEFT') and path:
+            # One raster sprite shares the face icons' exact ring pixels,
+            # white strokes and filtering instead of mixing line renderers.
+            path = self.c.menu.button_icons['combat-dpad-'+token.lower()]
+        prompt.glyph = api['Sprite'](parent=prompt, align=k.TOPLEFT, left=3, top=3,
+                    width=icon_size, height=icon_size, texturePath=path,
+                    color=(1., 1., 1., 1.), state=k.UI_DISABLED, idx=0) if path else api['Label'](
+                    parent=prompt, align=k.TOPLEFT, left=(size-16)/2., top=(size-14)/2.,
+                    text=token, state=k.UI_DISABLED, idx=0)
+        return prompt
+
     def build(self, ship, stock, viewport):
         api, ui = self.native_api(), self.c.ui
         k, Container, Sprite = api['const'], api['Container'], api['Sprite']
@@ -311,9 +359,10 @@ class _CombatHUD(object):
             cluster, direction = index // 4, index % 4
             dx, dy = ((0, -62.5), (62.5, 0), (0, 62.5), (-62.5, 0))[direction]
             cx, cy = width / 2. + cluster_x[cluster] + dx, cluster_y[cluster] + dy
-            cell = Container(parent=self.root, name='evejsCombatSlot%d' % index,
+            cell = api['Transform'](parent=self.root, name='evejsCombatSlot%d' % index,
                              align=k.TOPLEFT, left=cx-32, top=cy-32, width=64, height=64,
-                             state=k.UI_NORMAL, pickRadius=26, idx=0)
+                             state=k.UI_NORMAL, pickRadius=26, idx=0,
+                             scale=(1., 1.), scalingCenter=(.5, .5))
             Sprite(parent=cell, align=k.TOALL, state=k.UI_DISABLED,
                    texturePath='res:/UI/Texture/classes/ShipUI/slotMainCombined.png')
             frame = api['Line'](parent=cell, align=k.TOPLEFT, width=64, height=64,
@@ -328,13 +377,7 @@ class _CombatHUD(object):
             self.cells.append(cell)
             token = _CH_NAMES[index % 8]
             vx, vy = ((0, -1), (1, 0), (0, 1), (-1, 0))[direction]
-            path = self.icon(token)
-            prompt = Sprite(parent=self.root, align=k.TOPLEFT, left=cx+vx*51-13,
-                            top=cy+vy*51-13, width=26, height=26, state=k.UI_DISABLED,
-                            texturePath=path) if path else api['Label'](
-                            parent=self.root, align=k.TOPLEFT, left=cx+vx*51-8,
-                            top=cy+vy*51-7, text=token, state=k.UI_DISABLED)
-            self.prompts.append(prompt)
+            self.prompts.append(self.button_prompt(token, cx+vx*51, cy+vy*51, 26))
             arc = api['Line'](parent=cell, name='evejsCombatHold', align=k.TOPLEFT,
                               width=64, height=64, state=k.UI_DISABLED, lineWidth=2,
                               color=(.91, .64, .29, 1.), idx=0)
@@ -344,8 +387,8 @@ class _CombatHUD(object):
             path = self.icon('LT' if bank == 0 else 'RT')
             if path:
                 if compact:offset += -100 if bank==0 else 100
-                self.bank_prompts.append(Sprite(parent=self.root, align=k.TOPLEFT, left=width/2.+offset-16,
-                       top=14, width=32, height=32, texturePath=path, state=k.UI_DISABLED))
+                self.bank_prompts.append(self.button_prompt('LT' if bank == 0 else 'RT',
+                                         width/2.+offset, 30, 32))
         self.own(stock).node.display = False
         self.hidden.append(stock)
         toggle = getattr(ship, 'moduleToggleCont', None)
@@ -400,7 +443,7 @@ class _CombatHUD(object):
         self.center.align = k.TOPLEFT
         compact = self.viewport[2]
         self.center.left, self.center.top = (width-self.center.width)/2., 158 if compact else 28
-        widgets = [widget for widget in self.utilities if _ch_alive(widget) and getattr(widget, 'display', True)]
+        widgets = [widget for widget in self.utilities if self.utility_visible(widget)]
         total = sum(widget.width for widget in widgets) + max(0, len(widgets)-1)*12.
         left = (width-total)/2.
         for widget in widgets:
@@ -408,6 +451,15 @@ class _CombatHUD(object):
             widget.left, widget.top = left, (552 if compact else 292)-widget.height/2.
             left += widget.width+12.
         self.enforce_visibility()
+
+    def utility_visible(self, widget):
+        if not _ch_alive(widget) or not getattr(widget, 'display', True):return False
+        # Native grouping keeps its outer container displayed even when there
+        # are no groupable weapons and its actual icon is hidden.
+        if widget is getattr(self.stock, 'groupAllButton', None):
+            icon = getattr(widget, 'groupAllIcon', None)
+            return _ch_alive(icon) and getattr(icon, 'display', True)
+        return True
 
     def rebuild_guard(self, native):
         def rebuild(*args, **kwargs):
@@ -444,6 +496,12 @@ class _CombatHUD(object):
                    getattr(ship, 'safetyButton', None), getattr(ship, 'optionsCont', None)]
         if not all(_ch_alive(widget) for widget in widgets):
             raise ValueError('Native Utility Controls Unavailable')
+        mining = getattr(ship, 'mining_overlay_buttons', None)
+        if _ch_alive(mining):
+            # The integrated Mining Surveyor is a separate native container,
+            # outside hudButtons. Move its existing control with the strip and
+            # retain the container's native hull-dependent visibility.
+            widgets.insert(widgets.index(controls.autopilotBtn), mining)
         # Include optional zoom controls and future native utility buttons;
         # keep the existing instances, enabled state, menus and tooltips.
         widgets.extend(child for child in children if child not in widgets and callable(getattr(child, 'OnClick', None)))
@@ -452,6 +510,11 @@ class _CombatHUD(object):
         self.utilities = list(widgets)
         for widget in widgets:
             self.own(widget)
+            if widget is mining:
+                for node in [widget] + list(widget.children):
+                    if node is not widget:self.own(node)
+                    for name in ('padLeft', 'padTop', 'padRight', 'padBottom'):
+                        if hasattr(node, name):setattr(node, name, 0)
             widget.SetParent(self.root)
             widget.align = k.TOPLEFT
         self.own(controls).node.display = False
@@ -519,6 +582,10 @@ class _CombatHUD(object):
             owner.hook('OnDropData', lambda source, nodes, pos=index: self.drop(pos, source, nodes))
             owner.hook('VerifyDrop', lambda source, nodes: self.can_drop(source, nodes))
             control = _CombatOwnedNode(button, False)
+            # Track ownership before replacing any handler so a partial
+            # attachment can restore the native button on failure.
+            owner.control = control
+            owner.controls = [control]
             # Keep module owners, native menus, tooltip and animation methods.
             native_click = button.OnClick
             control.hook('OnClick', self.cursor_click(index, button, native_click))
@@ -529,13 +596,11 @@ class _CombatHUD(object):
             control.hook('PrepareDrag', lambda drag, source, obj=button: self.prepare_drag(drag, obj))
             control.hook('VerifyDrag', lambda location, nodes: self.cell_index(location) is not None)
             control.hook('OnEndDrag', self.end_drag)
-            owner.control = control
-            owner.controls = [control]
             overload = getattr(getattr(button, 'sr', None), 'overloadButton', None)
             if _ch_alive(overload) and callable(getattr(overload, 'OnClick', None)):
                 overlay = _CombatOwnedNode(overload, False)
-                overlay.hook('OnClick', self.cursor_click(index, button, overload.OnClick))
                 owner.controls.append(overlay)
+                overlay.hook('OnClick', self.cursor_click(index, button, overload.OnClick))
         self.epoch += 1
         self.gestures.reset(self.gestures.previous)
 
@@ -564,6 +629,16 @@ class _CombatHUD(object):
                 return token
         return None
 
+    def tap_action(self, token, button):
+        key = (token[1], token[3], token[-1])
+        step = self.tap_cycle.observe(key, bool(getattr(button, 'online', True)),
+                                      bool(getattr(button.def_effect, 'isActive', False)))
+        if (not getattr(button, 'isInActiveState', False) or
+                any(getattr(button, name, False) for name in
+                    ('isDeactivating', 'effect_activating', 'waitingForActiveTarget', 'isPendingUnlockForDeactivate'))):
+            return None
+        return step
+
     def target(self, index):
         if not self.ready or self.identity != self.session_identity() or not self.assignments[index]:
             return None
@@ -585,32 +660,50 @@ class _CombatHUD(object):
 
     def execute(self, token, action):
         import uthread
+        if self.target(token[2]) != token or token in self.actions_pending:
+            return
+        button = self.moved[token[2]].control.node
+        intended = self.tap_action(token, button) if action == 'toggle' else 'overload'
+        if intended is None:return
+        self.actions_pending.add(token)
         def send():
-            if not self.c.active or self.c.mode.mode != 'controller' or not self.c.native.foreground():
-                return
-            if getattr(self.c.native, 'pending', False):
-                return
-            if self.blocked() or self.target(token[2]) != token:
-                return
-            # Recheck authoritative fit and bank identity at deferred dispatch.
-            snapshot = self.snapshot()
-            if snapshot is None or token[3] not in snapshot[2]:
-                return
-            button = self.moved[token[2]].control.node
-            if self.native_button(token[3]) not in (None, button):
-                return
-            if getattr(button, 'def_effect', None) is None or not getattr(button, 'isInActiveState', False):
-                return
-            if getattr(button, 'IsBeingDragged', lambda: False)():
-                return
             try:
-                if action == 'overload':
+                if not self.c.active or self.c.mode.mode != 'controller' or not self.c.native.foreground():
+                    return
+                if getattr(self.c.native, 'pending', False):
+                    return
+                if self.blocked() or self.target(token[2]) != token:
+                    return
+                # Recheck authoritative fit and bank identity at deferred dispatch.
+                snapshot = self.snapshot()
+                if snapshot is None or token[3] not in snapshot[2]:
+                    return
+                if self.native_button(token[3]) not in (None, button):
+                    return
+                if getattr(button, 'def_effect', None) is None or not getattr(button, 'isInActiveState', False):
+                    return
+                if getattr(button, 'IsBeingDragged', lambda: False)():
+                    return
+                if intended == 'overload':
+                    if not getattr(button, 'online', True):return
                     button.ToggleOverload()
+                elif self.tap_action(token, button) != intended:
+                    return
+                elif intended in ('online', 'offline'):
+                    # Already on a uthread: use the native handler directly so
+                    # its confirmations and server request remain serialized.
+                    button._ChangeOnline(intended == 'online')
                 else:
                     button.Click(0)
+                if self.target(token[2]) == token:self.tap_action(token, button)
             except Exception as error:
                 print('EVEJS_CONTROLLER:Module action unavailable: ' + type(error).__name__)
-        uthread.new(send)
+            finally:
+                self.actions_pending.discard(token)
+        try:uthread.new(send)
+        except Exception:
+            self.actions_pending.discard(token)
+            raise
 
     def source_item(self, source, nodes):
         if not self.ready or self.identity != self.session_identity() or self.blocked_without_drag():
@@ -724,7 +817,25 @@ class _CombatHUD(object):
                 for step in range(max(2, int(fraction * 48) + 1)):
                     angle = -math.pi/2 + 2*math.pi*min(fraction, step/48.)
                     arc.AddPoint((32 + 23*math.cos(angle), 32 + 23*math.sin(angle)), color=(.91, .64, .29, 1.))
-            self.prompts[index].opacity = 1. if bank == index//8 else .65
+
+    def update_focus(self, now, bank):
+        # Ease from the currently displayed emphasis, including rapid bank
+        # changes. Scale the native slot assembly around its own center while
+        # leaving logical slot bounds and outside prompts in place.
+        elapsed = min(1., max(0., (now-self.focus_started)/.16))
+        eased = elapsed*elapsed*(3.-2.*elapsed)
+        target = tuple(1. if self.focus_bank == side else 0. for side in range(2))
+        self.focus = tuple(start+(end-start)*eased for start, end in zip(self.focus_from, target))
+        if bank != self.focus_bank:
+            self.focus_bank, self.focus_started, self.focus_from = bank, now, self.focus
+        for index, cell in enumerate(self.cells):
+            selected, opposite = self.focus[index//8], self.focus[1-index//8]
+            scale = 1.+.05*selected
+            cell.scale = (scale, scale)
+            cell.opacity = 1.-.4*opposite
+            self.prompts[index].glyph.opacity = .65+.35*selected-.15*opposite
+        for side, prompt in enumerate(self.bank_prompts):
+            prompt.glyph.opacity = 1.-.4*self.focus[1-side]
 
     def route(self, pad, now, active=True):
         self.reserved &= pad[0]
@@ -768,6 +879,13 @@ class _CombatHUD(object):
                 self.refresh()
                 self.signature = signature
             self.ready = True
+            # Notice natural cycle completion and cursor-driven native state
+            # changes even when no controller button is being pressed.
+            for index, owner in self.moved.items():
+                token = self.target(index)
+                if (token is not None and token not in self.actions_pending and
+                        getattr(owner.control.node, 'def_effect', None) is not None):
+                    self.tap_action(token, owner.control.node)
             stage = 'Layout And Input'
             self.layout()
             self.root.display = True
@@ -776,6 +894,7 @@ class _CombatHUD(object):
                 self.execute(token, action)
             bank = 0 if mask & 0x30000 == 0x10000 else 1 if mask & 0x30000 == 0x20000 else None
             self.update_arcs(now, bank)
+            self.update_focus(now, None if blocked else bank)
             self.failed = False
             # Reserve only the digital module controls in a trigger context.
             # Cursor clicks, sticks, camera zoom and other inputs keep working.
@@ -838,12 +957,15 @@ class _CombatHUD(object):
     def detach(self, mask=0):
         self.ready, self.dragging = False, None
         self.gestures.reset(mask)
+        self.tap_cycle, self.actions_pending = _CombatTapCycle(), set()
         self.epoch += 1
         root, owned, created = self.root, self.owned, self.created
         self.root, self.ship, self.stock = None, None, None
         self.center, self.hud_parent = None, None
         self.viewport = None
         self.owned, self.created = [], []
+        self.focus_bank, self.focus_started = None, 0.
+        self.focus, self.focus_from = (0., 0.), (0., 0.)
         self.utilities, self.hidden = [], []
         self.cells, self.prompts, self.arcs = [], [], []
         self.bank_prompts = []

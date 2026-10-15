@@ -895,18 +895,20 @@ class Controller(object):
             return False
         return self.native.event(obj, event_id, param, self.constants)
 
-    def cancel(self):
+    def cancel(self, preserve_ui=False):
         try:
             self.ui_navigation.clear()
             if self.overview:
                 if self.overview.active:self.radial_gate = True
-                self.overview.cancel()
+                self.overview.cancel(not preserve_ui)
             if self.context:
                 if self.context.active:self.radial_gate = True
                 self.context.cancel()
             if self.combat:
                 pad = self.mode.previous
-                try:self.combat.detach(input_mask(pad, self.settings) if pad else 0)
+                try:
+                    if preserve_ui:self.combat.suspend(pad or (0,)*7)
+                    else:self.combat.detach(input_mask(pad, self.settings) if pad else 0)
                 except Exception as error:print('EVEJS_CONTROLLER:Combat HUD cleanup unavailable: '+type(error).__name__)
             self.window_close.cancel()
             self.custom_epoch += 1
@@ -977,7 +979,7 @@ class Controller(object):
         opener=self.helpers.get('_ec_neocom_open')
         if opener is None:
             return False
-        self.cancel()
+        self.cancel(preserve_ui=True)
         self.neocom_previous=pressed
         self.neocom=opener(self.ui,self,pad)
         if self.neocom is None:

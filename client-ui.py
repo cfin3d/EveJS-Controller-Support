@@ -200,7 +200,7 @@ def _ec_ui_navigate(controller, x, y, zoom, dt):
         overview=getattr(controller,'overview',None)
         # EVE can leave Overview natively active after its controller session
         # ends. Only the explicit session may own navigation for that window.
-        if overview is not None and not overview.active and owner is overview.last_window:
+        if overview is not None and not overview.active and (owner is overview.last_window or owner in getattr(overview,'views',{})):
             state.clear();return False
         if (owner is None or not _ec_radial_visible(ui,owner) or getattr(owner,'state',0) in (1,2) or
                 getattr(owner,'closing',False) or callable(getattr(owner,'IsMinimized',None)) and owner.IsMinimized()):
@@ -211,7 +211,7 @@ def _ec_ui_navigate(controller, x, y, zoom, dt):
         if (getattr(getattr(_ec_builtins,'session',None),'mutating',False) or getattr(ui,'dragObject',None) is not None or
                 getattr(controller.native,'owned',None) or getattr(controller.native,'physical_buttons',None) or getattr(controller.native,'pending',False)):
             state.pop('tail',None);return True
-        if not (x or y or zoom):state.pop('tail',None);state.pop('zoom',None);return True
+        if not (x or y or zoom):state.pop('tail',None);state.pop('zoom',None)
         speed=controller.settings['cameraSpeed']*max(0.,min(.05,dt))
         pane=None
         for candidate in (getattr(ui.uilib,'mouseOver',None),getattr(ui.registry,'GetFocus',lambda:None)()):
@@ -254,8 +254,12 @@ def _ec_ui_navigate(controller, x, y, zoom, dt):
                     bx,by,bw,bh=node.GetAbsolute();candidates.append((bw*bh,len(candidates),node));continue
                 pending.extend(list(getattr(node,'children',())))
             if candidates:pane=max(candidates)[2]
-        if pane is not None:_ec_ui_scroll(ui,pane,x*speed,-(y or zoom)*speed,state)
-        return True
+        if pane is not None:
+            if x or y or zoom:_ec_ui_scroll(ui,pane,x*speed,-(y or zoom)*speed,state)
+            else:state['pane']=pane
+            return True
+        if modal is not None or menus or owner is getattr(getattr(ui,'layer',None),'systemmenu',None):return True
+        state.clear();return False
     except Exception as error:
         if not state.get('failed'):
             print('EVEJS_CONTROLLER:Focused UI navigation unavailable: '+type(error).__name__)

@@ -159,7 +159,7 @@ These are the default bindings. Release a bumper early to cancel its click. A lo
 
 ### Overview Navigation
 
-Press **Start / Menu** to focus an open Overview. The cursor moves to the first object in the current tab, marked by a thin white bar. Browsing keeps EVE's native columns, transparency, standing colors, filters, and object icons. The footer shows the current controls in wrapping rows, dims unavailable actions, and becomes compact when an object menu is open.
+Overview's bumper prompts and footer stay visible throughout controller mode, including before navigation starts and after it ends. The idle footer shows **Focus Overview** and dims navigation actions. Press **Start / Menu** to focus an open Overview. The cursor moves to the first object in the current tab, marked by a thin white bar. Browsing keeps EVE's native columns, transparency, standing colors, filters, and object icons. The footer shows the current controls in wrapping rows, dims unavailable actions, and becomes compact when an object menu is open.
 
 | Control While Focused | Action |
 | :--- | :--- |
@@ -175,18 +175,19 @@ Press **Start / Menu** to focus an open Overview. The cursor moves to the first 
 
 Move the **cursor stick** (left stick by default) to browse freely inside Overview. Move outside its window to release focus at the cursor's current position; D-pad input resumes row navigation. Leaving an object menu releases both menu and Overview focus. Hold B for one second returns to the original cursor position.
 
-The focused row smoothly grows, pushing neighboring rows apart. Its Name column wraps within the existing column width, using up to three lines. **Click / Activation Hold** controls bumper/menu holds. Overview face actions use fixed 0.5-second holds, with a separate one-second B exit. Release early to cancel; moving to another object or moving the cursor cancels the pending action and requires a fresh press. Each hold activates once. Browsing alone does not click an object or change the selected target.
+The focused row smoothly grows, pushing neighboring rows apart. Columns stay aligned on one line. When a name exceeds its native column width, show it with an ellipsis above a smaller detail line spanning the available row width. Details use at most two lines when space allows; hover either name for the complete text. Native column widths and the configured row height stay unchanged. Grey face-action prompts mean EVE's native menu does not currently offer that action for the focused object; availability follows the object, distance and current game state. **Click / Activation Hold** controls bumper/menu holds. Overview face actions use fixed 0.5-second holds, with a separate one-second B exit. Release early to cancel; moving to another object or moving the cursor cancels the pending action and requires a fresh press. Each hold activates once. Browsing alone does not click an object or change the selected target.
 
 <details>
 <summary><strong>Overview Customization And Focus</strong></summary>
 
 - Rebind **Focus Overview** under **Settings → Controller → Bindings**. Existing Start/Menu assignments and combinations are preserved on update.
 - Set **Focused Row Extra Height** under **Settings → Controller → Overview**; zero retains native row and text sizes. Disable **Smooth Overview Transitions** for immediate movement.
-- Exiting Overview focus returns the right stick to camera pan/zoom even if EVE still marks Overview as its active window. Other focused windows, menus and dialogs retain their normal scrolling.
+- Camera pan/zoom works immediately after login and after exiting Overview focus, even if EVE still marks Overview or a window without scrolling as active. Other focused scrollable windows, menus and dialogs retain their normal navigation.
 - The enabled combat HUD stays visible during Overview and object-menu navigation. Module controls pause until Overview focus ends; existing module activity continues.
 - Native tab order, renamed tabs, filters, column widths, window placement, fonts and UI scaling remain under EVE's control. With multiple open Overviews, the hovered Overview takes priority, followed by the last used visible Overview.
 - Focus follows an object's identity through sorting. If it disappears, pending holds are canceled; use fresh D-pad input to choose another object.
 - Mouse/keyboard takeover, window closure, session changes and native modal dialogs cancel Overview focus and restore row sizes. Held buttons and triggers must be released before ordinary actions resume.
+- Mouse/keyboard takeover restores the original Overview presentation. Returning to controller mode restores its prompts across all visible Overview windows.
 
 </details>
 
@@ -238,7 +239,7 @@ Set **Window Close Hold** in **Settings → Controller → Hold Timing**; it def
 
 ### Neocom Navigation
 
-Press **Select / View** to open Neocom. D-pad navigation moves the cursor smoothly between items. The cursor stick also moves freely inside Neocom and its open submenus; moving outside closes them and restores normal cursor use at that position. D-pad input resumes item navigation.
+Press **Select / View** to open Neocom. D-pad navigation moves the cursor smoothly between items. The cursor stick also moves freely inside Neocom and its open submenus; moving outside closes them and restores normal cursor use at that position. D-pad input resumes item navigation. The enabled combat HUD remains visible while module controls pause.
 
 | Control While Open | Action |
 | :--- | :--- |

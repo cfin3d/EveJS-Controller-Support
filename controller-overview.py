@@ -1,3 +1,131 @@
+# Persistent controller-mode presentation for each native Overview window.
+class _OverviewChrome(object):
+    def __init__(self, navigation, window):
+        self.nav, self.c, self.window = navigation, navigation.c, window
+        self.group = window.tabGroup
+        self.glyphs, self.footer_groups = [], []
+        self.padding_hook = self.footer = None
+        try:
+            self.add_glyphs()
+            self.add_footer()
+        except Exception:
+            self.close()
+            raise
+
+    def add_glyphs(self):
+        from carbonui.primitives.sprite import Sprite
+        import carbonui.const as const
+        window, group = self.window, self.group
+        original = window._get_tab_group_padding
+        def padding():
+            left, top, right, bottom = original()
+            return (left + 52, top, right + 52, bottom)
+        self.padding_hook = (window, original, padding, window.__dict__.get('_get_tab_group_padding'))
+        window._get_tab_group_padding = padding
+        window._update_tabs_padding()
+        menu = self.c.menu
+        for token, align in (('LB', const.CENTERLEFT), ('RB', const.CENTERRIGHT)):
+            name = menu.icon_name(token) if menu else token.lower()
+            path = getattr(menu, 'button_icons', {}).get(name)
+            if path:
+                self.glyphs.append(Sprite(name='controllerOverview'+token, parent=group, align=align,
+                                         left=-42, width=32, height=32, texturePath=path,
+                                         color=(1., 1., 1., .8), state=const.UI_DISABLED))
+
+    def add_footer(self):
+        from carbonui.primitives.container import Container
+        from carbonui.primitives.fill import Fill
+        from carbonui.primitives.sprite import Sprite
+        from eve.client.script.ui.control.eveLabel import EveLabelSmall
+        import carbonui.const as const
+        # Dock before the native TOALL scroll, reserving real list space. The
+        # window's own background, padding and resize handle remain native.
+        self.footer = Container(name='controllerOverviewFooter', parent=self.window.content,
+                                align=const.TOBOTTOM, height=32, idx=0, state=const.UI_DISABLED)
+        Fill(parent=self.footer, align=const.TOTOP, height=1, color=(1., 1., 1., .15), state=const.UI_DISABLED)
+        for tokens, text in ((('UP', 'DOWN'), 'Browse'), (('LB',), 'Hold: Menu'),
+                             (('X',), '0.5s: Lock'), (('Y',), '0.5s: Orbit'), (('A',), '0.5s: Approach'),
+                             (('B',), '0.5s: Track On Release'), (('B',), '1s: Exit')):
+            group = Container(parent=self.footer, align=const.TOPLEFT, height=24, clipChildren=True, state=const.UI_DISABLED)
+            icons = [Sprite(parent=group, align=const.CENTERLEFT, left=index*24, width=24, height=24,
+                            color=(1., 1., 1., .8), state=const.UI_DISABLED) for index in range(4 if len(tokens) == 2 else len(tokens))]
+            label = EveLabelSmall(parent=group, align=const.CENTERLEFT, left=len(tokens)*24+6,
+                                 text=text, fontsize=13, maxLines=1, color=(1., 1., 1., .8), state=const.UI_DISABLED)
+            self.footer_groups.append((group, icons, label, tokens))
+        self.update_footer()
+
+    def update_footer(self):
+        if self.footer is None:return
+        menu, context = self.c.menu, self.c.context
+        focused = self.nav.window is self.window
+        in_menu = focused and (self.nav.context_wait or context is not None and context.owner is self.nav)
+        for glyph in self.glyphs:
+            opacity = 1. if focused else .4
+            if getattr(glyph, 'opacity', None) != opacity:glyph.opacity = opacity
+        visible = []
+        for index, (group, icons, label, tokens) in enumerate(self.footer_groups):
+            group.display = not in_menu or index in (0, 1, 6)
+            if not group.display:continue
+            if index == 0:
+                tokens, text = (('UP', 'DOWN'), 'Browse') if focused else (tuple(filter(None, self.c.settings['bindings']['overview'].split('+'))), 'Focus Overview')
+                if label.text != text:label.text = text
+            elif index == 1:
+                tokens, text = (('RB',), 'Hold: Select') if in_menu else (('LB',), 'Hold: Menu')
+                if label.text != text:label.text = text
+            elif index == 6:
+                text = 'Hold: Back' if in_menu else '1s: Exit'
+                if label.text != text:label.text = text
+            for slot, icon in enumerate(icons):
+                icon.display = slot < len(tokens)
+                if not icon.display:continue
+                icon.left = slot*24
+                token = tokens[slot]
+                name = menu.icon_name(token) if menu else token.lower()
+                path = getattr(menu, 'button_icons', {}).get(name)
+                if path and getattr(icon, 'texturePath', None) != path:icon.texturePath = path
+            if label.left != len(tokens)*24+6:label.left = len(tokens)*24+6
+            enabled = focused and self.nav.selected() is not None
+            if index in (2, 3, 4, 5):enabled = ('lock', 'orbit', 'approach', 'track')[index-2] in self.nav.actions
+            group.opacity = .4 if (not focused and index != 0 or not in_menu and index in (1, 2, 3, 4, 5) and not enabled) else 1.
+            width = len(tokens)*24 + 6 + int(getattr(label, 'textwidth', len(label.text)*7))
+            visible.append((group, width))
+        width = max(0, self.footer.GetAbsolute()[2] - 24)
+        rows, row, used = [], [], 0
+        for group, requested in visible:
+            size = min(width, requested)
+            if row and used + 12 + size > width:
+                rows.append(row);row, used = [], 0
+            row.append((group, size));used += size + (12 if len(row)>1 else 0)
+        if row:rows.append(row)
+        wx, wy, ww, wh = self.window.GetAbsolute()
+        cx, cy, cw, ch = self.window.content.GetAbsolute()
+        padding = (0, 0, 0, -max(0, wy+wh-1-cy-ch))
+        if getattr(self.footer, 'padding', None) != padding:self.footer.padding = padding
+        self.footer.height = 8 + len(rows)*24 + max(0, len(rows)-1)*4
+        for index, row in enumerate(rows):
+            total = sum(size for group, size in row)
+            gap = (width-total)/float(len(row)-1) if len(row)>1 else 0
+            left = 12 if len(row)>1 else 12+(width-total)/2.
+            for group, size in row:
+                group.left, group.top, group.width = left, 4+index*28, size
+                left += size+gap
+
+    def close(self):
+        if self.footer is not None and not getattr(self.footer, 'destroyed', False):self.footer.Close()
+        self.footer = None
+        self.footer_groups = []
+        for glyph in self.glyphs:
+            if not getattr(glyph, 'destroyed', False):glyph.Close()
+        self.glyphs = []
+        if self.padding_hook:
+            window, original, wrapper, previous = self.padding_hook
+            if window.__dict__.get('_get_tab_group_padding') is wrapper:
+                del window._get_tab_group_padding
+                if previous is not None:window._get_tab_group_padding = previous
+                if not getattr(window, 'destroyed', False):window._update_tabs_padding()
+            self.padding_hook = None
+
+
 # Controller focus for the existing Overview. Python 2.7 compatible.
 class _OverviewNavigation(object):
     def __init__(self, controller):
@@ -5,17 +133,19 @@ class _OverviewNavigation(object):
         self.window = self.last_window = self.returning = None
         self.previous_open = False
         self.item = self.tab = None
-        self.edits, self.fonts, self.glyphs = {}, {}, []
+        self.edits, self.fonts, self.views = {}, {}, {}
         self.holds, self.fills = {}, {}
         self.serial = 0
         self.busy = None
         self.context_wait = self.right_pending = False
         self.reported = False
-        self.padding_hook = None
         self.loading = self.first_pending = False
         self.wrapped = None
-        self.footer = self.rail = None
-        self.footer_groups = []
+        self.name_detail = self.name_measure = None
+        self.name_short = None
+        self.name_offsets = {}
+        self.rail = None
+        self.row_hook = None
         self.icon_offset = self.shadow = None
         self.pointer = {}
         self.actions, self.action_holds = {}, {}
@@ -25,6 +155,33 @@ class _OverviewNavigation(object):
     @property
     def active(self):
         return self.window is not None or self.returning is not None
+
+    @property
+    def view(self):
+        return self.views.get(self.window) or self.views.get(self.last_window) or next(iter(self.views.values()), None)
+
+    @property
+    def footer(self):return self.view.footer if self.view else None
+
+    @property
+    def footer_groups(self):return self.view.footer_groups if self.view else []
+
+    @property
+    def glyphs(self):return self.view.glyphs if self.view else []
+
+    def update_footer(self):
+        for view in self.views.values():view.update_footer()
+
+    def present(self):
+        from eve.client.script.ui.inflight.overview.overviewWindow import OverviewWindow
+        windows = [window for window in self.c.ui.registry.GetWindows()
+                   if isinstance(window, OverviewWindow) and self.available(window)]
+        for window, view in list(self.views.items()):
+            if window not in windows or view.group is not window.tabGroup or getattr(view.footer, 'destroyed', False):
+                view.close();del self.views[window]
+        for window in windows:
+            if window not in self.views:self.views[window] = _OverviewChrome(self, window)
+        self.update_footer()
 
     def identity(self):
         session = getattr(_ec_builtins, 'session', None)
@@ -69,92 +226,6 @@ class _OverviewNavigation(object):
             if active is window or _ec_ui_under(active, window):return window
         return windows[0] if windows else None
 
-    def add_glyphs(self):
-        from carbonui.primitives.sprite import Sprite
-        import carbonui.const as const
-        window, group = self.window, self.window.tabGroup
-        original = window._get_tab_group_padding
-        def padding():
-            left, top, right, bottom = original()
-            return (left + 52, top, right + 52, bottom)
-        self.padding_hook = (window, original, padding, window.__dict__.get('_get_tab_group_padding'))
-        window._get_tab_group_padding = padding
-        window._update_tabs_padding()
-        menu = self.c.menu
-        for token, align in (('LB', const.CENTERLEFT), ('RB', const.CENTERRIGHT)):
-            name = menu.icon_name(token) if menu else token.lower()
-            path = getattr(menu, 'button_icons', {}).get(name)
-            if path:
-                self.glyphs.append(Sprite(name='controllerOverview'+token, parent=group, align=align,
-                                         left=-42, width=32, height=32, texturePath=path,
-                                         color=(1., 1., 1., .8), state=const.UI_DISABLED))
-
-    def add_footer(self):
-        from carbonui.primitives.container import Container
-        from carbonui.primitives.fill import Fill
-        from carbonui.primitives.sprite import Sprite
-        from eve.client.script.ui.control.eveLabel import EveLabelSmall
-        import carbonui.const as const
-        # Dock before the native TOALL scroll, reserving real list space. The
-        # window's own background, padding and resize handle remain native.
-        self.footer = Container(name='controllerOverviewFooter', parent=self.window.content,
-                                align=const.TOBOTTOM, height=32, idx=0, state=const.UI_DISABLED)
-        Fill(parent=self.footer, align=const.TOTOP, height=1, color=(1., 1., 1., .15), state=const.UI_DISABLED)
-        for tokens, text in ((('UP', 'DOWN'), 'Browse'), (('LB',), 'Hold: Menu'),
-                             (('X',), '0.5s: Lock'), (('Y',), '0.5s: Orbit'), (('A',), '0.5s: Approach'),
-                             (('B',), '0.5s: Track On Release'), (('B',), '1s: Exit')):
-            group = Container(parent=self.footer, align=const.TOPLEFT, height=24, clipChildren=True, state=const.UI_DISABLED)
-            icons = [Sprite(parent=group, align=const.CENTERLEFT, left=index*24, width=24, height=24,
-                            color=(1., 1., 1., .8), state=const.UI_DISABLED) for index in range(len(tokens))]
-            label = EveLabelSmall(parent=group, align=const.CENTERLEFT, left=len(tokens)*24+6,
-                                 text=text, fontsize=13, maxLines=1, color=(1., 1., 1., .8), state=const.UI_DISABLED)
-            self.footer_groups.append((group, icons, label, tokens))
-        self.update_footer()
-
-    def update_footer(self):
-        if self.footer is None:return
-        menu, context = self.c.menu, self.c.context
-        in_menu = self.context_wait or context is not None and context.owner is self
-        visible = []
-        for index, (group, icons, label, tokens) in enumerate(self.footer_groups):
-            group.display = not in_menu or index in (0, 1, 6)
-            if not group.display:continue
-            if index == 1:
-                tokens, text = (('RB',), 'Hold: Select') if in_menu else (('LB',), 'Hold: Menu')
-                if label.text != text:label.text = text
-            elif index == 6:
-                text = 'Hold: Back' if in_menu else '1s: Exit'
-                if label.text != text:label.text = text
-            for icon, token in zip(icons, tokens):
-                name = menu.icon_name(token) if menu else token.lower()
-                path = getattr(menu, 'button_icons', {}).get(name)
-                if path and getattr(icon, 'texturePath', None) != path:icon.texturePath = path
-            enabled = self.selected() is not None
-            if index in (2, 3, 4, 5):enabled = ('lock', 'orbit', 'approach', 'track')[index-2] in self.actions
-            group.opacity = .4 if not in_menu and index in (1, 2, 3, 4, 5) and not enabled else 1.
-            width = len(icons)*24 + 6 + int(getattr(label, 'textwidth', len(label.text)*7))
-            visible.append((group, width))
-        width = max(0, self.footer.GetAbsolute()[2] - 24)
-        rows, row, used = [], [], 0
-        for group, requested in visible:
-            size = min(width, requested)
-            if row and used + 12 + size > width:
-                rows.append(row);row, used = [], 0
-            row.append((group, size));used += size + (12 if len(row)>1 else 0)
-        if row:rows.append(row)
-        wx, wy, ww, wh = self.window.GetAbsolute()
-        cx, cy, cw, ch = self.window.content.GetAbsolute()
-        padding = (0, 0, 0, -max(0, wy+wh-1-cy-ch))
-        if getattr(self.footer, 'padding', None) != padding:self.footer.padding = padding
-        self.footer.height = 8 + len(rows)*24 + max(0, len(rows)-1)*4
-        for index, row in enumerate(rows):
-            total = sum(size for group, size in row)
-            gap = (width-total)/float(len(row)-1) if len(row)>1 else 0
-            left = 12 if len(row)>1 else 12+(width-total)/2.
-            for group, size in row:
-                group.left, group.top, group.width = left, 4+index*28, size
-                left += size+gap
-
     def restore_icon_offset(self):
         if self.icon_offset:
             icon, original, assigned = self.icon_offset
@@ -189,6 +260,7 @@ class _OverviewNavigation(object):
 
     def update_rail(self, node):
         panel = getattr(node, 'panel', None)
+        self.watch_row(panel)
         if self.rail and (self.rail[0] is not panel or self.rail[1] is not node or getattr(panel, 'destroyed', False)):
             if not getattr(self.rail[2], 'destroyed', False):self.rail[2].Close()
             self.rail = None
@@ -227,12 +299,12 @@ class _OverviewNavigation(object):
         front = getattr(window, 'SetOrder', None)
         if callable(front):front(0)
         c.ui.registry.SetFocus(window)
-        self.add_glyphs()
-        self.add_footer()
+        if window not in self.views:self.views[window] = _OverviewChrome(self, window)
         nodes = self.nodes()
         self.first_pending = not bool(nodes)
         self.loading = False
         if nodes:self.focus(nodes[0], now)
+        self.update_footer()
 
     def base_height(self, node, fallback):
         fixed = getattr(node, 'fixedHeight', None)
@@ -247,6 +319,7 @@ class _OverviewNavigation(object):
             if panel is keep and not getattr(label, 'destroyed', False):continue
             if not getattr(label, 'destroyed', False) and label.measurer.fontSize == assigned:
                 label.measurer.fontSize = base
+                label._columnWidthDirty = True
                 label.text = label.text
             del self.fonts[key]
 
@@ -260,15 +333,62 @@ class _OverviewNavigation(object):
             size = max(1, int(round(base * (1. + .17 * fraction))))
             if size != current:
                 label.measurer.fontSize = size
+                label._columnWidthDirty = True
                 label.text = label.text
             self.fonts[key] = (label, base, size, panel)
 
+    def restore_row_hook(self):
+        if self.row_hook is None:return
+        panel, previous, wrapper = self.row_hook
+        if panel.__dict__.get('UpdateColumns') is wrapper:
+            if previous is None:del panel.UpdateColumns
+            else:panel.UpdateColumns = previous
+        self.row_hook = None
+
+    def watch_row(self, panel):
+        if self.row_hook is not None and self.row_hook[0] is panel:return
+        self.restore_row_hook()
+        original = getattr(panel, 'UpdateColumns', None)
+        if panel is None or getattr(panel, 'destroyed', False) or not callable(original):return
+        def update(*args, **kwargs):
+            result = original(*args, **kwargs)
+            node = self.selected()
+            if (self.window is not None and not getattr(panel, 'destroyed', False) and
+                    getattr(node, 'panel', None) is panel and getattr(getattr(panel, 'sr', None), 'node', None) is node):
+                fraction = self.edits.get(id(node), [None, None, 0.])[2]
+                self.resize_fonts(panel, fraction)
+                self.wrap_name(node)
+                self.update_rail(node)
+            return result
+        self.row_hook = (panel, panel.__dict__.get('UpdateColumns'), update)
+        panel.UpdateColumns = update
+
     def restore_name(self):
-        if self.wrapped is None:return
-        panel, node, label, display, wrapped, opacity = self.wrapped
-        if not getattr(wrapped, 'destroyed', False):wrapped.Close()
-        if not getattr(label, 'destroyed', False) and not label.display:label.display = display
+        for obj, original, assigned in self.name_offsets.values():
+            if not getattr(obj, 'destroyed', False) and getattr(obj, 'top', 0) == assigned:obj.top = original
+        self.name_offsets = {}
+        if self.name_detail is not None and not getattr(self.name_detail, 'destroyed', False):self.name_detail.Close()
+        self.name_detail = None
+        if self.wrapped is not None:
+            panel, node, label, display, wrapped, opacity = self.wrapped
+            if not getattr(wrapped, 'destroyed', False):wrapped.Close()
+            if not getattr(label, 'destroyed', False) and not label.display:label.display = display
         self.wrapped = None
+
+    def offset_name_columns(self, panel, offset):
+        objects = [obj for obj in list(getattr(panel, 'columnLabels', ())) + [getattr(panel, 'mainIcon', None)]
+                   if obj is not None and not getattr(obj, 'destroyed', False)]
+        for key, (obj, original, assigned) in list(self.name_offsets.items()):
+            if obj not in objects:
+                if not getattr(obj, 'destroyed', False) and getattr(obj, 'top', 0) == assigned:obj.top = original
+                del self.name_offsets[key]
+        for obj in objects:
+            record = self.name_offsets.get(id(obj))
+            current = getattr(obj, 'top', 0)
+            original = record[1] if record and current == record[2] else current
+            assigned = original + offset
+            if current != assigned:obj.top = assigned
+            self.name_offsets[id(obj)] = (obj, original, assigned)
 
     def wrap_name(self, node):
         if not self.c.settings['overviewRowExpansion']:
@@ -279,24 +399,68 @@ class _OverviewNavigation(object):
                       if name and label.text == name and getattr(label, 'columnWidth', 0) > 0), None)
         if self.wrapped and (self.wrapped[0] is not panel or self.wrapped[1] is not node or self.wrapped[2] is not label):self.restore_name()
         if label is None:return
+        from eve.client.script.ui.control.eveLabel import EveLabelSmall
         size = max(1, int(round(label.ReverseScaleDpi(label.measurer.fontSize))))
-        lines = min(3, max(1, int((node.height - 4) / float(size + 2))))
-        if lines < 2:
+        style = getattr(EveLabelSmall, 'default_fontStyle', None)
+        def measure(text):
+            return self.c.ui.font.GetTextWidth(text, fontsize=size, font=style, fontStyle=style)
+        measure_key = (name, size, style)
+        if self.name_measure is None or self.name_measure[0] != measure_key:
+            self.name_measure = (measure_key, measure(name))
+        base = self.fonts.get(id(label), (None, label.measurer.fontSize))[1]
+        detail_size = max(1, int(round(label.ReverseScaleDpi(base))))
+        space = min(2*(detail_size+2), max(0, node.height-size-12))
+        lines = max(1, min(2, int(space / float(detail_size+2))))
+        if self.name_measure[1] <= label.columnWidth:
+            self.restore_name();return
+        short_key = (name, size, style, label.columnWidth)
+        if self.name_short is None or self.name_short[0] != short_key:
+            suffix = u'...'
+            low, high = 0, len(name)
+            while low < high:
+                middle = (low+high+1)//2
+                if measure(name[:middle]+suffix) <= label.columnWidth:low = middle
+                else:high = middle-1
+            short = name[:low].rstrip()+suffix if measure(suffix) <= label.columnWidth else ''
+            self.name_short = (short_key, short)
+        width = max(0, panel.GetAbsolute()[2])
+        left = max(10, min(getattr(obj, 'columnPosition', label.columnPosition)
+                           for obj in panel.columnLabels if not getattr(obj, 'destroyed', False)))
+        detail_width = max(0, width-left-10)
+        if detail_width < detail_size*3:
             self.restore_name();return
         if self.wrapped is None:
-            from eve.client.script.ui.control.eveLabel import EveLabelSmall
             from carbonui import TextColor
             import carbonui.const as const
             wrapped = EveLabelSmall(parent=panel, name='controllerOverviewName', align=const.CENTERLEFT,
-                                   state=const.UI_DISABLED, text='', maxLines=lines, fontsize=size,
-                                   color=TextColor.HIGHLIGHT)
+                                   state=const.UI_NORMAL, text='', maxLines=1, fontsize=size,
+                                   showEllipsis=False, autoFadeSides=False, color=TextColor.HIGHLIGHT)
+            self.name_detail = EveLabelSmall(parent=panel, name='controllerOverviewNameDetail', align=const.CENTERLEFT,
+                                            state=const.UI_NORMAL, text='', maxLines=lines, fontsize=detail_size,
+                                            showEllipsis=True, color=TextColor.HIGHLIGHT)
+            # Keep native row clicks, drags and object menus under the text.
+            for target in (wrapped, self.name_detail):
+                def get_hint(obj=target):return obj._controllerOverviewName
+                target.GetHint = get_hint
+                for event in ('GetMenu', 'OnMouseDown', 'OnMouseUp', 'OnClick', 'OnDblClick'):
+                    handler = getattr(label, event, None)
+                    if callable(handler):setattr(target, event, handler)
             self.wrapped = (panel, node, label, label.display, wrapped, label.opacity)
         wrapped = self.wrapped[4]
-        wrapped.left, wrapped.width = label.columnPosition, label.columnWidth
-        wrapped.fontsize, wrapped.maxLines = size, lines
-        wrapped.text = name
-        wrapped.opacity = self.wrapped[5]
-        label.display = False
+        # OverviewLabel uses a native text render object whose opacity does not
+        # hide its measured glyphs. The scoped UpdateColumns hook reapplies
+        # display before a native row refresh can reveal the original name.
+        offset = -(space+min(3, space))/2.
+        self.offset_name_columns(panel, offset)
+        for target, values in ((wrapped, (('left', label.columnPosition), ('width', label.columnWidth),
+                                         ('top', offset), ('fontsize', size), ('maxLines', 1),
+                                         ('text', self.name_short[1]))),
+                               (self.name_detail, (('left', left), ('width', detail_width), ('top', (size+7)/2.),
+                                                   ('fontsize', detail_size), ('maxLines', lines),
+                                                   ('display', space >= detail_size+2), ('text', name)))):
+            for attr, value in values + (('_controllerOverviewName', name), ('opacity', self.wrapped[5])):
+                if getattr(target, attr, None) != value:setattr(target, attr, value)
+        if label.display:label.display = False
 
     def layout(self, now, immediate=False):
         if self.window is None:return
@@ -333,7 +497,7 @@ class _OverviewNavigation(object):
             if record[3] not in panels:
                 label, base, assigned, panel = record
                 if not getattr(label, 'destroyed', False) and label.measurer.fontSize == assigned:
-                    label.measurer.fontSize = base;label.text = label.text
+                    label.measurer.fontSize = base;label._columnWidthDirty = True;label.text = label.text
                 del self.fonts[key]
         if changed:
             scroll.UpdateNodesWidthAndPosition()
@@ -346,13 +510,12 @@ class _OverviewNavigation(object):
         self.update_footer()
 
     def restore_layout(self):
+        self.restore_row_hook()
         self.restore_icon_offset()
         if self.shadow and not getattr(self.shadow[0], 'destroyed', False):self.shadow[0].Close()
         self.shadow = None
         if self.rail and not getattr(self.rail[2], 'destroyed', False):self.rail[2].Close()
         self.rail = None
-        if self.footer is not None and not getattr(self.footer, 'destroyed', False):self.footer.Close()
-        self.footer, self.footer_groups = None, []
         self.restore_name()
         self.restore_fonts()
         if self.window is not None and not getattr(self.window, 'destroyed', False):
@@ -363,18 +526,7 @@ class _OverviewNavigation(object):
                 scroll.UpdateNodesWidthAndPosition()
                 scroll.UpdatePosition()
         self.edits = {}
-        for glyph in self.glyphs:
-            if not getattr(glyph, 'destroyed', False):glyph.Close()
-        self.glyphs = []
-        if self.padding_hook:
-            window, original, wrapper, previous = self.padding_hook
-            if window.__dict__.get('_get_tab_group_padding') is wrapper:
-                del window._get_tab_group_padding
-                if previous is not None:window._get_tab_group_padding = previous
-                if not getattr(window, 'destroyed', False):window._update_tabs_padding()
-            self.padding_hook = None
-
-    def cancel(self):
+    def cancel(self, detach=False):
         self.actions, self.action_holds = {}, {}
         self.action_query = None
         try:self.restore_layout()
@@ -387,6 +539,10 @@ class _OverviewNavigation(object):
             self.context_wait = self.right_pending = False
             if self.c.context and self.c.context.owner is self:self.c.context.cancel()
             self.c.native.release()
+            if detach:
+                for view in self.views.values():view.close()
+                self.views.clear()
+            else:self.update_footer()
 
     def finish(self, now):
         origin, start = self.origin, self.c.native.position()
@@ -577,6 +733,7 @@ class _OverviewNavigation(object):
         rising, self.previous_open = pressed and not self.previous_open, pressed
         self.fills = {}
         try:
+            self.present()
             if self.returning:
                 if not self.safe() or settings_open:self.cancel();return True
                 started, start, end = self.returning

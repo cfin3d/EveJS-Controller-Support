@@ -159,7 +159,7 @@ These are the default bindings. Release a bumper early to cancel its click. A lo
 
 ### Overview Navigation
 
-Press **Start / Menu** to focus an open Overview. The cursor moves to the first object in the current tab, marked by a thin white bar. Browsing keeps EVE's native columns, transparency, standing colors, filters, and object icons. The footer shows the current navigation controls and adapts when an object menu is open.
+Press **Start / Menu** to focus an open Overview. The cursor moves to the first object in the current tab, marked by a thin white bar. Browsing keeps EVE's native columns, transparency, standing colors, filters, and object icons. The footer shows the current controls in wrapping rows, dims unavailable actions, and becomes compact when an object menu is open.
 
 | Control While Focused | Action |
 | :--- | :--- |
@@ -167,11 +167,15 @@ Press **Start / Menu** to focus an open Overview. The cursor moves to the first 
 | <img src="assets/buttons/lb.svg" width="28" height="28" alt="Left Bumper"> <img src="assets/buttons/rb.svg" width="28" height="28" alt="Right Bumper"> **Tap LB / RB** | Switch to the previous / next native tab on release. |
 | <img src="assets/buttons/lb.svg" width="28" height="28" alt="Left Bumper"> **Hold LB** | Open the focused object's native context menu. |
 | <img src="assets/buttons/rb.svg" width="28" height="28" alt="Right Bumper"> **Hold RB In The Context Menu** | Confirm its highlighted action. The menu closes and Overview navigation resumes on the same object. |
-| <img src="assets/buttons/b.svg" width="28" height="28" alt="B"> **Hold B** | Exit Overview focus and return to the original cursor position. Inside a context menu, close that menu first. |
+| <img src="assets/buttons/b.svg" width="28" height="28" alt="B"> **Hold B For 1 Second** | Exit Overview focus and return to the original cursor position without tracking. Inside a context menu, B closes that menu first using the normal menu hold. |
+| <img src="assets/buttons/x.svg" width="28" height="28" alt="X"> **Hold X For 0.5 Seconds** | Lock the focused object when EVE allows it. Does not toggle an existing lock off. |
+| <img src="assets/buttons/y.svg" width="28" height="28" alt="Y"> **Hold Y For 0.5 Seconds** | Orbit the focused object at EVE's current default range. |
+| <img src="assets/buttons/a.svg" width="28" height="28" alt="A"> **Hold A For 0.5 Seconds** | Approach the focused object. |
+| <img src="assets/buttons/b.svg" width="28" height="28" alt="B"> **Hold B For 0.5 Seconds, Then Release Before 1 Second** | Track the focused object with the camera. Continuing to one second exits instead. |
 
-Move the **cursor stick** (left stick by default) to browse freely inside Overview. Move outside its window to release focus at the cursor's current position; D-pad input resumes row navigation. Leaving an object menu releases both menu and Overview focus. Hold B keeps its existing return behavior.
+Move the **cursor stick** (left stick by default) to browse freely inside Overview. Move outside its window to release focus at the cursor's current position; D-pad input resumes row navigation. Leaving an object menu releases both menu and Overview focus. Hold B for one second returns to the original cursor position.
 
-The focused row smoothly grows, pushing neighboring rows apart. Its Name column wraps within the existing column width, using up to three lines. **Click / Activation Hold** controls menu and exit holds. Browsing does not click an object or change the selected target.
+The focused row smoothly grows, pushing neighboring rows apart. Its Name column wraps within the existing column width, using up to three lines. **Click / Activation Hold** controls bumper/menu holds. Overview face actions use fixed 0.5-second holds, with a separate one-second B exit. Release early to cancel; moving to another object or moving the cursor cancels the pending action and requires a fresh press. Each hold activates once. Browsing alone does not click an object or change the selected target.
 
 <details>
 <summary><strong>Overview Customization And Focus</strong></summary>

@@ -18,6 +18,9 @@ class _OverviewNavigation(object):
         self.footer_groups = []
         self.icon_offset = self.shadow = None
         self.pointer = {}
+        self.actions, self.action_holds = {}, {}
+        self.action_query = None
+        self.next_actions = 0.
 
     @property
     def active(self):
@@ -97,7 +100,9 @@ class _OverviewNavigation(object):
         self.footer = Container(name='controllerOverviewFooter', parent=self.window.content,
                                 align=const.TOBOTTOM, height=32, idx=0, state=const.UI_DISABLED)
         Fill(parent=self.footer, align=const.TOTOP, height=1, color=(1., 1., 1., .15), state=const.UI_DISABLED)
-        for tokens, text in ((('UP', 'DOWN'), 'Browse'), (('LB',), 'Hold: Menu'), (('B',), 'Hold: Exit')):
+        for tokens, text in ((('UP', 'DOWN'), 'Browse'), (('LB',), 'Hold: Menu'),
+                             (('X',), '0.5s: Lock'), (('Y',), '0.5s: Orbit'), (('A',), '0.5s: Approach'),
+                             (('B',), '0.5s: Track On Release'), (('B',), '1s: Exit')):
             group = Container(parent=self.footer, align=const.TOPLEFT, height=24, clipChildren=True, state=const.UI_DISABLED)
             icons = [Sprite(parent=group, align=const.CENTERLEFT, left=index*24, width=24, height=24,
                             color=(1., 1., 1., .8), state=const.UI_DISABLED) for index in range(len(tokens))]
@@ -110,34 +115,45 @@ class _OverviewNavigation(object):
         if self.footer is None:return
         menu, context = self.c.menu, self.c.context
         in_menu = self.context_wait or context is not None and context.owner is self
-        widths = []
+        visible = []
         for index, (group, icons, label, tokens) in enumerate(self.footer_groups):
+            group.display = not in_menu or index in (0, 1, 6)
+            if not group.display:continue
             if index == 1:
                 tokens, text = (('RB',), 'Hold: Select') if in_menu else (('LB',), 'Hold: Menu')
                 if label.text != text:label.text = text
-            elif index == 2:
-                text = 'Hold: Back' if in_menu else 'Hold: Exit'
+            elif index == 6:
+                text = 'Hold: Back' if in_menu else '1s: Exit'
                 if label.text != text:label.text = text
             for icon, token in zip(icons, tokens):
                 name = menu.icon_name(token) if menu else token.lower()
                 path = getattr(menu, 'button_icons', {}).get(name)
                 if path and getattr(icon, 'texturePath', None) != path:icon.texturePath = path
-            group.opacity = .4 if index == 1 and not in_menu and self.selected() is None else 1.
-            widths.append(len(icons)*24 + 6 + int(getattr(label, 'textwidth', len(label.text)*7)))
+            enabled = self.selected() is not None
+            if index in (2, 3, 4, 5):enabled = ('lock', 'orbit', 'approach', 'track')[index-2] in self.actions
+            group.opacity = .4 if not in_menu and index in (1, 2, 3, 4, 5) and not enabled else 1.
+            width = len(icons)*24 + 6 + int(getattr(label, 'textwidth', len(label.text)*7))
+            visible.append((group, width))
         width = max(0, self.footer.GetAbsolute()[2] - 24)
-        stacked = sum(widths) + 24 > width
-        # Include the native bottom gutter in the visible footer instead of
-        # leaving it as extra empty space beneath otherwise centered prompts.
+        rows, row, used = [], [], 0
+        for group, requested in visible:
+            size = min(width, requested)
+            if row and used + 12 + size > width:
+                rows.append(row);row, used = [], 0
+            row.append((group, size));used += size + (12 if len(row)>1 else 0)
+        if row:rows.append(row)
         wx, wy, ww, wh = self.window.GetAbsolute()
         cx, cy, cw, ch = self.window.content.GetAbsolute()
         padding = (0, 0, 0, -max(0, wy+wh-1-cy-ch))
         if getattr(self.footer, 'padding', None) != padding:self.footer.padding = padding
-        self.footer.height = 84 if stacked else 32
-        lefts = (0, (width-widths[1])/2., width-widths[2])
-        for index, (group, icons, label, tokens) in enumerate(self.footer_groups):
-            group.left = 12 if stacked else 12 + lefts[index]
-            group.top = 4 + index*26 if stacked else (self.footer.height-group.height)/2.
-            group.width = min(width, widths[index])
+        self.footer.height = 8 + len(rows)*24 + max(0, len(rows)-1)*4
+        for index, row in enumerate(rows):
+            total = sum(size for group, size in row)
+            gap = (width-total)/float(len(row)-1) if len(row)>1 else 0
+            left = 12 if len(row)>1 else 12+(width-total)/2.
+            for group, size in row:
+                group.left, group.top, group.width = left, 4+index*28, size
+                left += size+gap
 
     def restore_icon_offset(self):
         if self.icon_offset:
@@ -359,6 +375,8 @@ class _OverviewNavigation(object):
             self.padding_hook = None
 
     def cancel(self):
+        self.actions, self.action_holds = {}, {}
+        self.action_query = None
         try:self.restore_layout()
         finally:
             self.window = self.returning = None
@@ -378,9 +396,13 @@ class _OverviewNavigation(object):
         self.returning = (now, start, origin)
 
     def focus(self, node, now):
+        self.serial += 1
+        self.actions, self.action_holds = {}, {}
+        self.action_query = None
+        self.next_actions = 0.
         self.pointer.clear()
         self.item = node.itemID
-        self.blocked |= self.previous & 0x300
+        self.blocked |= self.previous & 0xf300
         self.holds = {}
         self.transition = (now, self.c.native.position())
 
@@ -446,11 +468,96 @@ class _OverviewNavigation(object):
         self.c.native.buttons(set((2,)))
         self.context_wait = self.right_pending = True
         self.holds = {}
+        self.action_holds = {}
+        self.serial += 1
+
+    def action_entries(self):
+        from carbonui.control.contextMenu.menuDataFactory import CreateMenuDataFromRawTuples
+        node = self.selected()
+        panel = getattr(node, 'panel', None)
+        if panel is None or not _ec_radial_visible(self.c.ui, panel):return {}
+        getter = getattr(panel, 'GetMenu', None)
+        if not callable(getter):return {}
+        paths = {'UI/Inflight/LockTarget':'lock', 'UI/Inflight/OrbitObject':'orbit',
+                 'UI/Inflight/ApproachObject':'approach', 'UI/Inflight/SetAsCameraInterest':'track'}
+        entries = CreateMenuDataFromRawTuples(getter())
+        return dict((paths[entry.GetLabelPath()], entry) for entry in entries or ()
+                    if entry is not None and entry.GetLabelPath() in paths and entry.IsEnabled() and entry.HasFunction())
+
+    def action_valid(self, stamp):
+        return (self.context_valid() and not self.context_wait and not self.loading and
+                stamp == (self.serial, self.window, self.item, self.tab))
+
+    def refresh_actions(self, now):
+        if now < self.next_actions or self.action_query is not None or self.selected() is None:return
+        stamp = (self.serial, self.window, self.item, self.tab)
+        if not self.action_valid(stamp):return
+        self.action_query, self.next_actions = stamp, now+.5
+        import uthread
+        def query():
+            try:
+                if not self.action_valid(stamp):return
+                entries = self.action_entries()
+                if self.action_valid(stamp):self.actions = entries
+            except Exception:
+                if self.action_valid(stamp):self.actions = {}
+            finally:
+                if self.action_query == stamp:self.action_query = None
+        uthread.new(query)
+
+    def request_action(self, action):
+        stamp = (self.serial, self.window, self.item, self.tab)
+        if not self.action_valid(stamp):return
+        import uthread
+        def invoke():
+            try:
+                if not self.action_valid(stamp):return
+                # Rebuild native availability at dispatch; the entry owns its
+                # object ID, default range, safety checks and confirmations.
+                entry = self.action_entries().get(action)
+                if entry is not None and self.action_valid(stamp) and entry.IsEnabled():entry.ExecuteFunction()
+            except Exception as error:
+                print('EVEJS_CONTROLLER:Overview action unavailable: ' + type(error).__name__)
+            finally:
+                if self.action_valid(stamp):self.next_actions = 0.
+        uthread.new(invoke)
+
+    def face_step(self, raw, mask, now, pointed):
+        face = mask & 0xf000
+        if face & 0x2000:
+            for button in (0x1000, 0x4000, 0x8000):self.action_holds.pop(button, None)
+            self.blocked |= raw & 0xd000
+        elif face and face & (face-1):
+            self.blocked |= face
+            self.action_holds.clear()
+            return
+        if mask & 0x2000:
+            started = self.action_holds.setdefault(0x2000, now)
+            elapsed = max(0., now-started)
+            self.fills[1], self.fills[2] = min(1., elapsed/.5), min(1., elapsed)
+            if elapsed+1e-6 >= 1.:
+                self.finish(now)
+                return
+        elif 0x2000 in self.action_holds:
+            elapsed = now-self.action_holds.pop(0x2000)
+            if not raw & 0x2000:
+                if elapsed+1e-6 >= 1.:self.finish(now);return
+                if elapsed+1e-6 >= .5 and pointed:self.request_action('track')
+        for button, action in ((0x4000, 'lock'), (0x8000, 'orbit'), (0x1000, 'approach')):
+            if not mask & button or mask & 0x2000 or not pointed or not self.context_valid():
+                self.action_holds.pop(button, None);continue
+            started = self.action_holds.setdefault(button, now)
+            progress = min(1., max(0., (now-started)/.5))
+            self.fills[1] = progress
+            if now-started+1e-6 >= .5:
+                self.blocked |= button
+                self.action_holds.pop(button, None)
+                self.request_action(action)
 
     def context_finished(self, now):
         self.context_wait = self.right_pending = False
         self.holds = {}
-        self.blocked |= self.previous | 0x230f
+        self.blocked |= self.previous | 0xf30f
         self.direction = 0
         self.transition = (now, self.c.native.position())
         if not self.context_valid():self.cancel()
@@ -525,7 +632,9 @@ class _OverviewNavigation(object):
                     self.transition = None
                     pointed = True
                 if self.pointer['moving']:
-                    self.blocked |= pad[0] & 0x300
+                    self.blocked |= pad[0] & 0xf300
+                    self.action_holds.clear()
+                    self.serial += 1
                     self.holds.pop(0x100, None);self.holds.pop(0x200, None)
             raw = pad[0]
             self.blocked &= raw
@@ -550,6 +659,7 @@ class _OverviewNavigation(object):
                         if node is not current:self.focus(node, now)
                     self.next_repeat = now + (.35 if direction != self.direction else .12)
                 self.direction = direction
+            self.refresh_actions(now)
             self.layout(now)
             if not manual:self.animate(now)
             for button, direction in ((0x100, -1), (0x200, 1)):
@@ -568,12 +678,7 @@ class _OverviewNavigation(object):
                 elif button in self.holds:
                     started, item, tab = self.holds.pop(button)
                     if not raw & button and now - started < self.c.settings['clickHoldMilliseconds'] / 1000.:self.change_tab(direction, now)
-            if mask & 0x2000:
-                started = self.holds.setdefault('exit', now)
-                progress = min(1., max(0., (now - started) * 1000. / self.c.settings['clickHoldMilliseconds']))
-                self.fills[2] = progress
-                if progress >= 1.:self.finish(now)
-            else:self.holds.pop('exit', None)
+            if not self.context_wait:self.face_step(raw, mask, now, pointed)
             self.previous = mask
             return True
         except Exception as error:

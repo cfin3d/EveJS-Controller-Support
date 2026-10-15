@@ -161,6 +161,8 @@ These are the default bindings. Release a bumper early to cancel its click. A lo
 
 Overview's bumper prompts and footer stay visible throughout controller mode, including before navigation starts and after it ends. The idle footer shows **Focus Overview** and dims navigation actions. Press **Start / Menu** to focus an open Overview. The cursor moves to the first object in the current tab, marked by a thin white bar. Browsing keeps EVE's native columns, transparency, standing colors, filters, and object icons. The footer shows the current controls in wrapping rows, dims unavailable actions, and becomes compact when an object menu is open.
 
+![Controller Overview Navigation](assets/overview-navigation.jpg)
+
 | Control While Focused | Action |
 | :--- | :--- |
 | <img src="assets/buttons/dpad-up.svg" width="28" height="28" alt="D-Pad Up"> <img src="assets/buttons/dpad-down.svg" width="28" height="28" alt="D-Pad Down"> **D-Pad Up / Down** | Browse objects immediately; hold to repeat and scroll the list. |

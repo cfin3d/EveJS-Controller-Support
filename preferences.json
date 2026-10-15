@@ -32,8 +32,11 @@
     "fly": "RS",
     "stop": "RS",
     "neocom": "VIEW",
-    "closeWindow": "B"
+    "closeWindow": "B",
+    "overview": "MENU"
   },
   "customBindings": [],
-  "profiles": {}
+  "profiles": {},
+  "overviewRowExpansion": 34,
+  "overviewAnimations": true
 }

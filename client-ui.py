@@ -643,6 +643,8 @@ def _ec_neocom_open(uicore,controller,pad):
     class NeocomSession(object):
         def __init__(self):
             self.closed=False
+            self.pointer={}
+            self.pointer_escaped=False
             self.stack=[]
             self.hooks=[]
             self.previous_mask=pad[0] | (0x10000 if pad[5]>=controller.settings['triggerThreshold'] else 0) | (0x20000 if pad[6]>=controller.settings['triggerThreshold'] else 0)
@@ -697,6 +699,7 @@ def _ec_neocom_open(uicore,controller,pad):
             return sorted(rows,key=lambda row:row.GetAbsolute()[1])
 
         def focus(self,index,now):
+            self.pointer.clear()
             panel,old_index=self.stack[-1]
             rows=self.rows(panel)
             if not rows:return False
@@ -754,6 +757,29 @@ def _ec_neocom_open(uicore,controller,pad):
 
         def step(self,pad,now):
             if not self.valid():return False
+            manual=controller.focus_pointer(pad,now,[panel for panel,index in self.stack],self.pointer)
+            if manual==2:
+                self.pointer_escaped=True
+                _ec_focus_release(controller,pad)
+                return False
+            pointed=True
+            if manual:
+                self.transition=None
+                while len(self.stack)>1 and not _ec_focus_contains(controller,self.stack[-1][0]):
+                    panel,index=self.stack.pop()
+                    service.ClosePanel(panel)
+                rows=self.rows(self.stack[-1][0])
+                row=next((row for row in rows if _ec_focus_contains(controller,row)),None)
+                pointed=row is not None
+                if row is not None and row is not self.selected():
+                    pointer=dict(self.pointer)
+                    self.focus(rows.index(row),now)
+                    self.pointer.update(pointer)
+                    self.transition=None
+                    self.holds.pop(0x200,None)
+                if self.pointer['moving']:
+                    if pad[0] & 0x200:self.blocked.add(0x200)
+                    self.holds.pop(0x200,None)
             mask=pad[0] | (0x10000 if pad[5]>=controller.settings['triggerThreshold'] else 0) | (0x20000 if pad[6]>=controller.settings['triggerThreshold'] else 0)
             rising=mask & ~self.previous_mask
             self.previous_mask=mask
@@ -775,6 +801,9 @@ def _ec_neocom_open(uicore,controller,pad):
                     self.holds.pop(button,None)
                     continue
                 if button in self.blocked:continue
+                if button==0x200 and not pointed:
+                    self.holds.pop(button,None)
+                    continue
                 row=self.selected()
                 key=(id(self.stack[-1][0]),id(row)) if button==0x200 else None
                 hold=self.holds.get(button)
@@ -793,7 +822,7 @@ def _ec_neocom_open(uicore,controller,pad):
                             # Use the row's native command/window/bookmark callback.
                             row.OnClick()
                             return False
-            self.animate(now)
+            if not manual:self.animate(now)
             return True
 
     navigation=NeocomSession()

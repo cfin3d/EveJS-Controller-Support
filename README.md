@@ -41,6 +41,7 @@
 - **Click Confirmation:** circular progress feedback with support for dragging.
 - **Camera and Ship Navigation:** pan, zoom, fly toward camera center, and stop.
 - **Controller Settings:** select a device, customize bindings, and save profiles in EVE's settings menu.
+- **Native Overview Navigation:** focus the original Overview, browse enlarged rows, switch tabs, and use native object menus.
 - **Controller Families:** PlayStation and Steam input paths, with automatic white button icons and a manual style override.
 - **Combat Feedback:** distinct damage vibrations and ship-destruction feedback, with adjustable strength and optional detailed DualSense USB haptics.
 - **Automatic Input Switching:** move freely between controller and mouse/keyboard controls.
@@ -147,6 +148,7 @@ The feature is disabled by default while gameplay validation is pending. This fi
 | <img src="assets/buttons/lb.svg" width="28" height="28" alt="Left Bumper"> **Left Bumper** | Hold **0.5 seconds** for right-click. Its context menu starts controller navigation automatically. |
 | <img src="assets/buttons/rb.svg" width="28" height="28" alt="Right Bumper"> **Right Bumper** | Hold **0.5 seconds** over a target to open its radial menu. On normal UI, hold for left-click and continue holding to drag. |
 | <img src="assets/buttons/view.svg" width="28" height="28" alt="Select / View"> **Select / View** | Open controller navigation in the Neocom menu. |
+| <img src="assets/buttons/menu.svg" width="28" height="28" alt="Start / Menu"> **Start / Menu** | Focus the existing Overview and move to its first listed object. |
 | <img src="assets/buttons/b.svg" width="28" height="28" alt="B"> **B — Hold, Then Release** | Move to the focused window's X; release after **one second** to close it. Release early to cancel and return the cursor. |
 | <img src="assets/buttons/right-stick.svg" width="28" height="28" alt="Right Stick"> **Right Stick** | Scroll the focused window, pan a focused Map/Ship Tree, or pan/rotate the camera when no menu is focused. |
 | <img src="assets/buttons/lt.svg" width="28" height="28" alt="Left Trigger"> <img src="assets/buttons/right-stick.svg" width="28" height="28" alt="Right Stick"> **Hold Left Trigger + Right Stick** | Move **up** to zoom in or **down** to zoom out. Release the trigger to resume panning. |
@@ -154,6 +156,34 @@ The feature is disabled by default while gameplay validation is pending. This fi
 | <img src="assets/buttons/right-stick.svg" width="28" height="28" alt="Right Stick Hold"> **Right Stick — Hold** | Hold **one second** to request stop. |
 
 These are the default bindings. Release a bumper early to cancel its click. A long right-stick hold stops the ship without first issuing flight.
+
+### Overview Navigation
+
+Press **Start / Menu** to focus an open Overview. The cursor moves to the first object in the current tab, marked by a thin white bar. Browsing keeps EVE's native columns, transparency, standing colors, filters, and object icons. The footer shows the current navigation controls and adapts when an object menu is open.
+
+| Control While Focused | Action |
+| :--- | :--- |
+| <img src="assets/buttons/dpad-up.svg" width="28" height="28" alt="D-Pad Up"> <img src="assets/buttons/dpad-down.svg" width="28" height="28" alt="D-Pad Down"> **D-Pad Up / Down** | Browse objects immediately; hold to repeat and scroll the list. |
+| <img src="assets/buttons/lb.svg" width="28" height="28" alt="Left Bumper"> <img src="assets/buttons/rb.svg" width="28" height="28" alt="Right Bumper"> **Tap LB / RB** | Switch to the previous / next native tab on release. |
+| <img src="assets/buttons/lb.svg" width="28" height="28" alt="Left Bumper"> **Hold LB** | Open the focused object's native context menu. |
+| <img src="assets/buttons/rb.svg" width="28" height="28" alt="Right Bumper"> **Hold RB In The Context Menu** | Confirm its highlighted action. The menu closes and Overview navigation resumes on the same object. |
+| <img src="assets/buttons/b.svg" width="28" height="28" alt="B"> **Hold B** | Exit Overview focus and return to the original cursor position. Inside a context menu, close that menu first. |
+
+Move the **cursor stick** (left stick by default) to browse freely inside Overview. Move outside its window to release focus at the cursor's current position; D-pad input resumes row navigation. Leaving an object menu releases both menu and Overview focus. Hold B keeps its existing return behavior.
+
+The focused row smoothly grows, pushing neighboring rows apart. Its Name column wraps within the existing column width, using up to three lines. **Click / Activation Hold** controls menu and exit holds. Browsing does not click an object or change the selected target.
+
+<details>
+<summary><strong>Overview Customization And Focus</strong></summary>
+
+- Rebind **Focus Overview** under **Settings → Controller → Bindings**. Existing Start/Menu assignments and combinations are preserved on update.
+- Set **Focused Row Extra Height** under **Settings → Controller → Overview**; zero retains native row and text sizes. Disable **Smooth Overview Transitions** for immediate movement.
+- The enabled combat HUD stays visible during Overview and object-menu navigation. Module controls pause until Overview focus ends; existing module activity continues.
+- Native tab order, renamed tabs, filters, column widths, window placement, fonts and UI scaling remain under EVE's control. With multiple open Overviews, the hovered Overview takes priority, followed by the last used visible Overview.
+- Focus follows an object's identity through sorting. If it disappears, pending holds are canceled; use fresh D-pad input to choose another object.
+- Mouse/keyboard takeover, window closure, session changes and native modal dialogs cancel Overview focus and restore row sizes. Held buttons and triggers must be released before ordinary actions resume.
+
+</details>
 
 ### Right-Click Context Menus
 
@@ -164,10 +194,10 @@ Open a context menu with **LB**. The cursor moves smoothly to its first enabled 
 | <img src="assets/buttons/dpad-up.svg" width="28" height="28" alt="D-Pad Up"> <img src="assets/buttons/dpad-down.svg" width="28" height="28" alt="D-Pad Down"> **D-Pad Up / Down** | Move between enabled items immediately; hold to repeat. |
 | <img src="assets/buttons/dpad-right.svg" width="28" height="28" alt="D-Pad Right"> **D-Pad Right** | Enter a submenu. |
 | <img src="assets/buttons/dpad-left.svg" width="28" height="28" alt="D-Pad Left"> **D-Pad Left** | Return to the parent menu and its previous item. |
-| <img src="assets/buttons/rb.svg" width="28" height="28" alt="Right Bumper"> **Hold RB** | Select the highlighted action, or enter a submenu-only item. Selecting an action restores normal cursor use. |
+| <img src="assets/buttons/rb.svg" width="28" height="28" alt="Right Bumper"> **Hold RB** | Select the highlighted action, or enter a submenu-only item. Overview object menus resume Overview navigation; other menus restore normal cursor use. |
 | <img src="assets/buttons/b.svg" width="28" height="28" alt="B"> **Hold B** | Close the whole context menu and return the cursor smoothly to where it opened. |
 
-**RB/B holds default to 0.5 seconds**, using **Click / Activation Hold** in **Settings → Controller**. Release early to cancel a hold; changing items restarts RB's timer. Sticks and other gameplay bindings pause during navigation. Physical mouse/keyboard activity hands the native menu back to mouse control. Menus opened with a physical mouse keep their normal behavior.
+**RB/B holds default to 0.5 seconds**, using **Click / Activation Hold** in **Settings → Controller**. Release early to cancel a hold; changing items restarts RB's timer. The cursor stick moves freely inside the menu and its open submenus; moving outside closes the menu and releases focus without returning the cursor. D-pad input resumes row navigation. Camera and other gameplay bindings pause during navigation. Physical mouse/keyboard activity hands the native menu back to mouse control. Menus opened with a physical mouse keep their normal behavior.
 
 ### Focused Window Navigation
 
@@ -203,7 +233,7 @@ Set **Window Close Hold** in **Settings → Controller → Hold Timing**; it def
 
 ### Neocom Navigation
 
-Press **Select / View** to open Neocom. The cursor moves smoothly between items and stays within the active menu panel.
+Press **Select / View** to open Neocom. D-pad navigation moves the cursor smoothly between items. The cursor stick also moves freely inside Neocom and its open submenus; moving outside closes them and restores normal cursor use at that position. D-pad input resumes item navigation.
 
 | Control While Open | Action |
 | :--- | :--- |

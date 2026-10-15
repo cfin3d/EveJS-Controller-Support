@@ -15,7 +15,7 @@ BUTTON_ICONS = dict(A='a', B='b', X='x', Y='y', LB='lb', RB='rb', LT='lt', RT='r
                     UP='dpad-up', DOWN='dpad-down', LEFT='dpad-left', RIGHT='dpad-right', VIEW='view', MENU='menu')
 BUTTON_ICONS.update((name,name.lower()) for name in ('R4','L4','R5','L5','TOUCHPAD','MISC1','MISC2','MISC3','MISC4','MISC5','MISC6','GUIDE'))
 PS_ICON_FILES=('cross','circle','square','triangle','l1','r1','l2','r2','l3','r3','create','share','select','start','options','ps','touchpad')
-PROFILE_KEYS = ('bindings', 'customBindings', 'controllerIcons', 'combatHudEnabled', 'deadzone', 'cursorSpeed', 'cameraSpeed', 'cameraZoomSpeed',
+PROFILE_KEYS = ('bindings', 'customBindings', 'controllerIcons', 'combatHudEnabled', 'overviewRowExpansion', 'overviewAnimations', 'deadzone', 'cursorSpeed', 'cameraSpeed', 'cameraZoomSpeed',
                 'invertCameraPan', 'cursorRing', 'cursorSnap', 'snapRadius', 'snapMaxSpeed',
                 'clickHoldMilliseconds', 'rightStickStopMilliseconds', 'windowCloseHoldMilliseconds', 'triggerThreshold',
                 'vibrationEnabled','vibrationStrength','damageVibration','destructionVibration',
@@ -297,6 +297,9 @@ class ControllerSettings(object):
         self.Header(parent=panel, text='Combat HUD', padTop=12)
         self.check(panel, 'combatHudEnabled', 'Enable Combat HUD (Experimental)',
                    'Tap: Activate, Deactivate, Offline, Online; Hold: Overload; Native Confirmations And Module Menus')
+        self.Header(parent=panel, text='Overview', padTop=12)
+        self.pair(panel, [('overviewRowExpansion','Focused Row Extra Height',0,64,2)])
+        self.check(panel, 'overviewAnimations', 'Smooth Overview Transitions', 'Disable For Immediate Row And Cursor Movement')
         self.Header(parent=panel, text='Hold Timing', padTop=12)
         self.pair(panel, [('clickHoldMilliseconds','Click / Activation Hold (ms)',200,2000,50),('rightStickStopMilliseconds','Stop Hold (ms)',500,3000,100)])
         self.pair(panel, [('triggerThreshold','Trigger Activation',10,240,5),('windowCloseHoldMilliseconds','Window Close Hold (ms)',500,3000,100)])

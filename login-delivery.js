@@ -22,7 +22,7 @@ const BOOTSTRAP = [
   "  _ec_ui = {'__builtins__': __builtins__}",
   "  _ec_input = {'__builtins__': __builtins__}",
   "  _ec_settings = {'__builtins__': __builtins__}",
-  "  for _ec_file, _ec_namespace in [('controller-devices.py', _ec_ui), ('controller-feedback.py', _ec_ui), ('client-ui.py', _ec_ui), ('controller-context.py', _ec_ui), ('controller-combat.py', _ec_ui), ('controller-settings.py', _ec_settings), ('controller.py', _ec_input)]:",
+  "  for _ec_file, _ec_namespace in [('controller-devices.py', _ec_ui), ('controller-feedback.py', _ec_ui), ('client-ui.py', _ec_ui), ('controller-context.py', _ec_ui), ('controller-overview.py', _ec_ui), ('controller-combat.py', _ec_ui), ('controller-settings.py', _ec_settings), ('controller.py', _ec_input)]:",
   "   with open(_ec_os.path.join(_ec_dir, _ec_file), 'rb') as _ec_stream:",
   "    _ec_source = _ec_stream.read(65537)",
   "   if len(_ec_source) > 65536: raise ValueError('Oversized controller script')",

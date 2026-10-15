@@ -1,4 +1,48 @@
 # Native right-click menu navigation. Python 2.7 compatible.
+def _ec_focus_contains(controller, panel, point=None):
+    dx, dy, dw, dh = controller.ui.desktop.GetAbsolute()
+    sx, sy, sw, sh = controller.native.bounds()
+    mx, my = point if point is not None else controller.native.position()
+    x, y, w, h = panel.GetAbsolute()
+    return x <= dx+(mx-sx)*dw/float(sw) < x+w and y <= dy+(my-sy)*dh/float(sh) < y+h
+
+
+def _ec_focus_pointer(controller, axes, now, panels, state):
+    dt = max(.001, min(.05, now-state.get('time', now-.016)))
+    state['time'] = now
+    moving = axes != (0., 0.)
+    state['moving'] = moving
+    if moving and not state.get('manual'):
+        state.update(manual=True, x=0., y=0.)
+        controller.motion.reset()
+        controller.magnet.reset()
+    if not state.get('manual'):return 0
+    vx, vy = controller.motion.step(axes[0], axes[1], dt)
+    vx = vx*controller.settings['cursorSpeed']*dt + state['x']
+    vy = -vy*controller.settings['cursorSpeed']*dt + state['y']
+    ix, iy = int(vx), int(vy)
+    state['x'], state['y'] = vx-ix, vy-iy
+    if ix or iy:
+        x, y = controller.native.position()
+        controller.native.move(x+ix, y+iy)
+    point = controller.native.position()
+    state['changed'] = point != state.get('point')
+    state['point'] = point
+    return 1 if any(_ec_focus_contains(controller, panel) for panel in panels) else 2
+
+
+def _ec_focus_release(controller, pad):
+    # Preserve free cursor movement, but require fresh digital/trigger input.
+    controller.focus_gate = pad[0] | (0x10000 if pad[5] >= controller.settings['triggerThreshold'] else 0) | (0x20000 if pad[6] >= controller.settings['triggerThreshold'] else 0)
+    controller.custom_epoch += 1
+    controller.custom_down = controller.custom_pressed(pad)
+    controller.native.release()
+    controller.gestures.reset()
+    controller.magnet.reset()
+    controller.radial_gate = False
+    if controller.combat:controller.combat.suspend(pad)
+
+
 class _ContextNavigation(object):
     def __init__(self, controller):
         self.c = controller
@@ -10,6 +54,8 @@ class _ContextNavigation(object):
         self.busy = None
         self.transition = self.highlighted = None
         self.reported = False
+        self.owner = None
+        self.pointer = {}
 
     @property
     def active(self):
@@ -26,7 +72,7 @@ class _ContextNavigation(object):
         return (c.active and c.mode.mode == 'controller' and c.native.foreground() and
                 not getattr(c.native, 'pending', False) and not getattr(c.native, 'physical_buttons', None) and
                 not getattr(c.ui, 'dragObject', None) and not getattr(getattr(_ec_builtins, 'session', None), 'mutating', False) and
-                self.stamp == self.snapshot())
+                self.stamp == self.snapshot() and (self.owner is None or self.owner.context_valid()))
 
     def roots(self):
         from carbonui.control.contextMenu.contextMenu import ContextMenu
@@ -35,12 +81,13 @@ class _ContextNavigation(object):
                 if isinstance(menu, ContextMenu) and not getattr(menu, 'parentEntry', None) and not getattr(menu, 'closing', False) and
                 getattr(menu, 'state', 0) != 2 and _ec_radial_visible(self.c.ui, menu)]
 
-    def observe(self, held, now):
+    def observe(self, held, now, owner=None):
         # Arm only for a synthetic right-click actually emitted by our gesture.
         # Physical mouse menus and existing popups never acquire controller focus.
         right = 2 in held
         try:
             if right and not self.right_down and not self.active:
+                self.owner = owner
                 self.pending = dict(origin=self.c.native.position(), roots=self.roots(), deadline=None)
                 self.stamp = self.snapshot()
             if self.pending:
@@ -92,11 +139,14 @@ class _ContextNavigation(object):
             self.pending = self.root = self.returning = None
             self.stack, self.holds, self.fills = [], {}, {}
             self.transition = self.highlighted = None
+            self.owner = None
 
     def cancel(self):
         # On physical takeover leave the native menu available to the mouse.
+        owner = self.owner
         self.cleanup()
         self.right_down = False
+        if owner is not None:owner.context_cancelled()
 
     def fail(self, error):
         owned = self.active
@@ -125,6 +175,7 @@ class _ContextNavigation(object):
         return self.stack[-1][1] if self.stack else None
 
     def focus(self, row, now):
+        self.pointer.clear()
         if row is not self.highlighted:
             self.paint(self.highlighted, False)
             self.paint(row, True)
@@ -172,6 +223,7 @@ class _ContextNavigation(object):
         self.menu_roots = self.roots()
         self.blocked, self.previous = pad[0] & 0x220f, pad[0]
         self.direction, self.next_repeat = 0, 0.
+        self.pointer.clear()
         c.custom_epoch += 1
         self.stamp = self.snapshot()
         c.custom_down = c.custom_pressed(pad)
@@ -190,12 +242,14 @@ class _ContextNavigation(object):
 
     def finish(self, now, restore=False, close=True):
         origin, start = self.origin, self.c.native.position()
+        owner = self.owner
         if close:self.close_owned()
         self.cleanup()
         self.c.radial_gate = True
         self.c.custom_epoch += 1
         self.stamp = self.snapshot()
-        if restore:self.returning = (now, start, origin)
+        if owner is not None:owner.context_finished(now)
+        elif restore:self.returning = (now, start, origin)
 
     def back(self, now):
         if len(self.stack) <= 1:return
@@ -287,10 +341,14 @@ class _ContextNavigation(object):
                 return True
             if self.root is None:
                 if self.pending is None:return False
-                if not self.safe() or self.c.neocom or self.c.radial or self.c.radial_hold or self.c.radial_gate:
-                    self.pending = None;return False
+                if not self.safe() or self.c.neocom or self.c.radial or self.c.radial_hold or self.c.radial_gate and self.owner is None:
+                    self.cancel();return False
                 deadline = self.pending['deadline']
-                if deadline is not None and now > deadline:self.pending = None;return False
+                if deadline is not None and now > deadline:
+                    owner = self.owner
+                    self.cleanup()
+                    if owner is not None:owner.context_finished(now)
+                    return False
                 roots = [root for root in self.roots() if root not in self.pending['roots']]
                 if not roots:return False
                 self.begin(roots[0], pad, now)
@@ -302,6 +360,31 @@ class _ContextNavigation(object):
                 parent = self.stack[-2][1]
                 if _ec_radial_visible(self.c.ui, panel) and getattr(parent, 'subMenuView', None) is panel:break
                 self.stack.pop();self.focus(self.selected(), now)
+            manual = self.c.focus_pointer(pad, now, [panel for panel, row in self.stack], self.pointer)
+            if manual == 2:
+                self.close_owned()
+                self.cancel()
+                _ec_focus_release(self.c, pad)
+                return True
+            pointed = True
+            if manual:
+                self.transition = None
+                while len(self.stack) > 1 and not _ec_focus_contains(self.c, self.stack[-1][0]):
+                    panel, row = self.stack.pop()
+                    panel.Collapse()
+                rows = self.rows(self.stack[-1][0])
+                row = next((row for row in rows if _ec_focus_contains(self.c, row)), None)
+                pointed = row is not None
+                if row is not None and row is not self.selected():
+                    pointer = dict(self.pointer)
+                    self.focus(row, now)
+                    self.pointer.update(pointer)
+                    self.transition = None
+                if self.pointer['moving']:
+                    self.blocked |= pad[0] & 0x200
+                    self.holds.pop(0x200, None)
+                    self.serial += 1
+                    self.busy = None
             # An already-running native hover task may finish after acquisition.
             # Retire only those extra branches of our own menu; preserve the
             # explicit D-pad path and never close another root's panels.
@@ -330,11 +413,12 @@ class _ContextNavigation(object):
                     if row is not self.selected():self.focus(row, now)
                 self.next_repeat = now + (.35 if direction != self.direction else .12)
             self.direction = direction
-            self.animate(now)
+            if not manual:self.animate(now)
             for button, indicator in ((0x2000, 2), (0x200, 1)):
                 if not mask & button or button == 0x200 and mask & 0x2000:
                     self.holds.pop(button, None);continue
-                if button == 0x200 and (self.selected() is None or self.busy is not None):continue
+                if button == 0x200 and (not pointed or self.selected() is None or self.busy is not None):
+                    self.holds.pop(button, None);continue
                 if button not in self.holds:self.holds[button] = now
                 progress = max(0., min(1., (now - self.holds[button]) * 1000. / self.c.settings['clickHoldMilliseconds']))
                 self.fills[indicator] = progress

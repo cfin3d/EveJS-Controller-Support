@@ -252,6 +252,35 @@
         "description": "Fixed module slots with per-ship memory. Tap cycles Activate, Deactivate, Offline, Online; hold toggles overload. Native confirmations and menus remain available. Off by default on new installs, including development builds."
       },
       {
+        "id": "overviewRowExpansion",
+        "label": "Focused Row Extra Height",
+        "type": "integer",
+        "default": 34,
+        "file": "preferences",
+        "key": [
+          "overviewRowExpansion"
+        ],
+        "restart": "none",
+        "group": "Overview",
+        "minimum": 0,
+        "maximum": 64,
+        "step": 2,
+        "description": "Extra native row height while Overview focus is active. Zero keeps the original row size and text."
+      },
+      {
+        "id": "overviewAnimations",
+        "label": "Smooth Overview Transitions",
+        "type": "boolean",
+        "default": true,
+        "file": "preferences",
+        "key": [
+          "overviewAnimations"
+        ],
+        "restart": "none",
+        "group": "Overview",
+        "description": "Ease focused row expansion and cursor movement. Disable for immediate transitions."
+      },
+      {
         "id": "snapRadius",
         "label": "Attraction Radius (px)",
         "type": "integer",

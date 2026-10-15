@@ -244,6 +244,7 @@ class _CombatHUD(object):
 
     def blocked(self):
         ui = self.c.ui
+        if getattr(self.c, 'overview', None) and self.c.overview.active:return True
         if self.c.neocom or self.c.radial or self.c.radial_hold or self.c.radial_gate or getattr(self.c, 'context', None) and self.c.context.active:
             return True
         close = getattr(self.c, 'window_close', None)
@@ -738,6 +739,7 @@ class _CombatHUD(object):
     def blocked_without_drag(self):
         ui = self.c.ui
         return (self.c.mode.mode != 'controller' or not self.c.native.foreground() or
+                bool(getattr(self.c, 'overview', None) and self.c.overview.active) or
                 ui.registry.GetModalWindow() is not None or
                 bool(getattr(getattr(_ch_builtins, 'session', None), 'mutating', False)))
 
@@ -953,6 +955,15 @@ class _CombatHUD(object):
             try:root.Close()
             except Exception:self.retired_roots.append(root)
         if not self.pending_owners and not self.retired_roots:self.cleanup_failed = False
+
+    def suspend(self, pad):
+        # Invalidate queued module work and entry holds without returning the
+        # borrowed native widgets or discarding their observed tap-cycle state.
+        self.epoch += 1
+        self.gestures.reset(pad[0])
+        self.reserved |= pad[0] & _CH_DIGITAL
+        self.dragging = None
+        self.actions_pending.clear()
 
     def detach(self, mask=0):
         self.ready, self.dragging = False, None

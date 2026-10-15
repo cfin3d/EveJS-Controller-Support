@@ -25,11 +25,11 @@ BUTTON_BITS = dict(BUTTONS)
 ACTIONS = [('cursor', 'Move Cursor'), ('cameraPan', 'Pan Camera / Focused UI'),
            ('cameraZoom', 'Zoom Camera'), ('leftClick', 'Left-Click / Target Radial'),
            ('rightClick', 'Right-Click'), ('fly', 'Fly Toward Camera Center'), ('stop', 'Stop Ship'),
-           ('neocom', 'Open Neocom'), ('closeWindow', 'Close Focused Window')]
+           ('neocom', 'Open Neocom'), ('overview', 'Focus Overview'), ('closeWindow', 'Close Focused Window')]
 DEFAULT_BINDINGS = dict(cursor='LEFT_STICK', cameraPan='RIGHT_STICK',
-                        cameraZoom='LT+RIGHT_STICK_Y', leftClick='RB', rightClick='LB', fly='RS', stop='RS',neocom='VIEW',closeWindow='B')
+                        cameraZoom='LT+RIGHT_STICK_Y', leftClick='RB', rightClick='LB', fly='RS', stop='RS',neocom='VIEW',overview='MENU',closeWindow='B')
 DEFAULTS = dict(schemaVersion=1, controllerIndex=-1, controllerIcons='auto', deadzone=.20, cursorSpeed=1100,
-                combatHudEnabled=False,
+                combatHudEnabled=False, overviewRowExpansion=34, overviewAnimations=True,
                 cameraSpeed=800, cursorRing=True, cursorSnap=True, snapRadius=28,
                 snapMaxSpeed=250, clickHoldMilliseconds=500, rightStickStopMilliseconds=1000, windowCloseHoldMilliseconds=1000,
                 invertCameraPan=False, cameraZoomSpeed=.8, triggerThreshold=40,
@@ -169,16 +169,16 @@ def preferences(document):
                   cameraSpeed=(100, 4000), snapRadius=(8, 64), snapMaxSpeed=(50, 600),
                   clickHoldMilliseconds=(200, 2000), rightStickStopMilliseconds=(500, 3000), windowCloseHoldMilliseconds=(500,3000),
                   cameraZoomSpeed=(.1, 3.), triggerThreshold=(10, 240), vibrationStrength=(0.,1.),
-                  damageVibrationStrength=(0.,1.), destructionVibrationStrength=(0.,1.))
+                  damageVibrationStrength=(0.,1.), destructionVibrationStrength=(0.,1.), overviewRowExpansion=(0,64))
     for name, limits in ranges.items():
         value = result[name]
         if isinstance(value, bool) or not isinstance(value, (int, float)) or math.isnan(value) or math.isinf(value) or not limits[0] <= value <= limits[1]:
             raise ValueError('Invalid ' + name)
-    for name in ('controllerIndex', 'clickHoldMilliseconds', 'rightStickStopMilliseconds', 'windowCloseHoldMilliseconds', 'triggerThreshold'):
+    for name in ('controllerIndex', 'clickHoldMilliseconds', 'rightStickStopMilliseconds', 'windowCloseHoldMilliseconds', 'triggerThreshold', 'overviewRowExpansion'):
         if int(result[name]) != result[name]:
             raise ValueError('Invalid ' + name)
         result[name] = int(result[name])
-    for name in ('cursorRing', 'cursorSnap', 'invertCameraPan','vibrationEnabled','damageVibration','destructionVibration','dualsenseHaptics','combatHudEnabled'):
+    for name in ('cursorRing', 'cursorSnap', 'invertCameraPan','vibrationEnabled','damageVibration','destructionVibration','dualsenseHaptics','combatHudEnabled','overviewAnimations'):
         if not isinstance(result[name], bool):
             raise ValueError('Invalid ' + name)
     if result['controllerIcons'] not in ('auto','xbox','ps4','ps5','steam'):
@@ -195,6 +195,12 @@ def preferences(document):
         if isinstance(customs,list):legacy.extend(item.get('controller','') for item in customs if isinstance(item,dict))
         if any(isinstance(value,TEXT_TYPES) and binding_overlap(value,'VIEW') for value in legacy):
             incoming=dict(incoming,neocom='')
+    if isinstance(incoming,dict) and 'overview' not in incoming:
+        legacy=list(incoming.values())
+        customs=document.get('customBindings', [])
+        if isinstance(customs,list):legacy.extend(item.get('controller','') for item in customs if isinstance(item,dict))
+        if any(isinstance(value,TEXT_TYPES) and binding_overlap(value.upper(),'MENU') for value in legacy):
+            incoming=dict(incoming,overview='')
     result['bindings'] = validate_bindings(incoming)
     result['customBindings'] = custom_bindings(document.get('customBindings', []), result['bindings'])
     profiles = document.get('profiles', {})
@@ -842,6 +848,7 @@ class Controller(object):
         self.window_close=WindowCloseGesture(self)
         self.ui_navigation = {}
         self.context = helpers['_ContextNavigation'](self) if '_ContextNavigation' in helpers else None
+        self.overview = helpers['_OverviewNavigation'](self) if '_OverviewNavigation' in helpers else None
         self.feedback = None
         self.combat = None
         self.combat_gate = 0
@@ -891,6 +898,9 @@ class Controller(object):
     def cancel(self):
         try:
             self.ui_navigation.clear()
+            if self.overview:
+                if self.overview.active:self.radial_gate = True
+                self.overview.cancel()
             if self.context:
                 if self.context.active:self.radial_gate = True
                 self.context.cancel()
@@ -938,7 +948,7 @@ class Controller(object):
                 continue
             def execute(binding=dict(item)):
                 current = tuple(getattr(getattr(_builtins,'session',None),key,None) for key in ('charid','shipid','solarsystemid','stationid','structureid'))
-                if not self.active or epoch != self.custom_epoch or identity != current or self.mode.mode != 'controller' or not self.native.foreground() or self.radial or self.radial_gate or self.neocom or self.context and self.context.active:
+                if not self.active or epoch != self.custom_epoch or identity != current or self.mode.mode != 'controller' or not self.native.foreground() or self.radial or self.radial_gate or self.neocom or self.context and self.context.active or self.overview and self.overview.active:
                     return
                 try:
                     self.helpers['_ec_custom_execute'](self.ui, binding)
@@ -956,7 +966,7 @@ class Controller(object):
             if settings_open or rising or not self.neocom.step(pad,now):
                 self.neocom.close()
                 self.neocom=None
-                self.radial_gate=True
+                self.radial_gate=not navigation.pointer_escaped
                 self.custom_down=self.custom_pressed(pad)
             else:fills=navigation.fills
             self.native.release()
@@ -974,6 +984,10 @@ class Controller(object):
             self.radial_gate=True
         self.native.release()
         return True
+
+    def focus_pointer(self,pad,now,panels,state):
+        if pad[0] & 15:state.clear();return 0
+        return self.helpers['_ec_focus_pointer'](self,axes('cursor',pad,self.settings),now,panels,state)
 
     def radial_tick(self, pad, x, y, now, settings_open):
         pressed = matches('leftClick', pad, self.settings)
@@ -1090,20 +1104,32 @@ class Controller(object):
         if self.feedback:self.feedback.tick(now,active,foreground,pad)
         if not active:
             self.cancel()
+            if self.overview:self.overview.previous_open = matches('overview',pad,self.settings) if pad is not None else False
+            if pad is not None and input_mask(pad,self.settings) == 0 and stick(pad[1],pad[2],self.settings['deadzone']) == (0.,0.) and stick(pad[3],pad[4],self.settings['deadzone']) == (0.,0.):
+                self.radial_gate = False
             return
+        self.focus_gate = getattr(self,'focus_gate',0) & input_mask(pad,self.settings)
+        if self.focus_gate:pad=(pad[0] & ~self.focus_gate,)+pad[1:5]+(0 if self.focus_gate & 0x10000 else pad[5],0 if self.focus_gate & 0x20000 else pad[6])
+        menu_layer = getattr(getattr(self.ui, 'layer', None), 'systemmenu', None)
+        settings_open = bool(menu_layer is not None and getattr(menu_layer, 'display', False) and
+                             any(getattr(child, 'display', False) and not getattr(child, 'destroyed', False) for child in getattr(menu_layer, 'children', [])))
+        overview_owned = bool(self.overview and self.overview.step(pad,now,matches('overview',pad,self.settings),settings_open))
         if self.combat:
-            try:pad = self.combat.route(pad, now)
+            try:
+                combat_pad = self.combat.route(pad, now)
+                if not overview_owned:pad = combat_pad
             except Exception as error:
                 self.combat_gate |= pad[0] & 0xf00f
                 try:self.combat.close()
                 except Exception:pass
                 self.combat = None
                 print('EVEJS_CONTROLLER:Combat HUD disabled; controller input retained: '+type(error).__name__)
+        if overview_owned:
+            self.custom_down=self.custom_pressed(pad)
+            self.overlay.update(True,self.settings['cursorRing'],True,self.overview.fills,False,0.,dt)
+            return
         if self.combat_gate:pad = (pad[0] & ~self.combat_gate,) + tuple(pad[1:])
         x, y = self.native.position()
-        menu_layer = getattr(getattr(self.ui, 'layer', None), 'systemmenu', None)
-        settings_open = bool(menu_layer is not None and getattr(menu_layer, 'display', False) and
-                             any(getattr(child, 'display', False) and not getattr(child, 'destroyed', False) for child in getattr(menu_layer, 'children', [])))
         if self.context and self.context.step(pad,now,dt):
             self.native.release()
             self.custom_down=self.custom_pressed(pad)

@@ -52,11 +52,13 @@
 | Requirement | Supported Configuration |
 | :--- | :--- |
 | EveJS | **0.12.9** |
-| EveJS Launcher | **1.0.53+** |
+| EveJS Launcher | **1.0.53+**; launcher integration verified with **1.0.72** |
 | EVE Client | **Build 3396210**, Windows x64 |
 | Controller Input | Xbox-compatible devices, DualShock/DualSense, and Steam controller input paths |
 | SteamOS / Proton | Experimental; requires running the Windows client and launcher through a compatible setup |
 | Server Backend | Native or Docker |
+
+Launcher **1.0.72** supports both separate and shared EVE settings with this mod. Controller preferences and saved controller profiles remain in the mod folder and apply across accounts using that installation.
 
 PlayStation/Steam hardware and SteamOS/Proton compatibility need community testing. The bundled controller library has been checked with simulated devices; physical-device coverage is not yet verified.
 

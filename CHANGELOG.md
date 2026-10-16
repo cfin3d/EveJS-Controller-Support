@@ -4,6 +4,11 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 
 ## [Unreleased]
 
+### Compatibility
+
+- Verify launcher **1.0.72** integration without changing the controller runtime or the **1.0.53+** minimum: manifest discovery, the 25-field launcher settings form, preference preservation, and install/profile preparation/disable/remove/recover helpers for Native and Docker backends.
+- Verify separate and shared EVE settings with two account identities, correct controller startup environment, distinct account/character auto-login arguments, and disabled-mod exclusion. Profile preparation preserves controller preferences, custom bindings, saved controller profiles, activation state and EVE settings. Controller preferences remain shared across accounts using the same mod installation. These checks use disposable launcher installations and captured client launches; physical-controller gameplay validation remains pending.
+
 ### Added
 
 - An action-first picker in **Bindings → Custom Shortcuts**, populated from the running EVE client's complete allowed command catalog. Browse native categories or search function names, descriptions, categories and keyboard shortcuts; show localized labels, available native descriptions, concise explanations for common functions without native details, separate current/default shortcuts, result counts and **Refresh**. Include unassigned functions and modifier-only or other native shortcuts without requiring the player to reconstruct a keyboard combination.

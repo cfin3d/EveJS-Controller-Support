@@ -83,6 +83,20 @@ PlayStation/Steam hardware and SteamOS/Proton compatibility need community testi
 5. **Launch:** restart the server when requested, then log in through EveJS Launcher.
 
 <details>
+<summary><strong>Docker Setup</strong></summary>
+
+| Step | Launcher Setting or Action |
+| :--- | :--- |
+| **Select Runtime** | In **Settings**, choose **Docker Compose** and set **EveJS Root** to the host folder containing `compose.yaml`. |
+| **Allow Mod Changes** | Set **Control Policy** to **Managed**, then **Save**. **Connect Only** disables mod changes. |
+| **Install and Enable** | Place `evejs-controller` in that host folder's `mods` directory, refresh **Mods**, and enable **EveJS Controller**. |
+| **Apply** | Select **Apply & Recreate Server**, wait for the server to come online, then launch your character through the launcher. |
+
+The launcher mounts the host's Mods folder and adds the controller preload when recreating the server. Use the launcher to start or recreate the modded server so its managed Compose override is included. Controller input runs inside the Windows EVE client; the controller stays connected to your PC.
+
+</details>
+
+<details>
 <summary><strong>Folder Layout</strong></summary>
 
 The manifest belongs directly inside the mod folder:

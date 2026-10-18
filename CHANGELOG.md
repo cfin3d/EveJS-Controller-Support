@@ -6,6 +6,7 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 
 ### Compatibility
 
+- Document Docker installation through the launcher's **Managed** control policy, host Mods folder, and **Apply & Recreate Server** action. Explain why **Connect Only** disables mod changes and why subsequent server starts must include the launcher's managed Compose override. Controller input continues to run inside the Windows EVE client.
 - Verify launcher **1.0.72** integration without changing the controller runtime or the **1.0.53+** minimum: manifest discovery, the 25-field launcher settings form, preference preservation, and install/profile preparation/disable/remove/recover helpers for Native and Docker backends.
 - Verify separate and shared EVE settings with two account identities, correct controller startup environment, distinct account/character auto-login arguments, and disabled-mod exclusion. Profile preparation preserves controller preferences, custom bindings, saved controller profiles, activation state and EVE settings. Controller preferences remain shared across accounts using the same mod installation. These checks use disposable launcher installations and captured client launches; physical-controller gameplay validation remains pending.
 

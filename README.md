@@ -10,7 +10,7 @@
 
 <p align="center">
   <img alt="Status: Unreleased" src="https://img.shields.io/badge/Status-Unreleased-57606a?style=for-the-badge">
-  <img alt="EveJS 0.12.9 and 261018.1" src="https://img.shields.io/badge/EveJS-0.12.9%20%7C%20261018.1-ffffff?style=for-the-badge&amp;labelColor=24292f">
+  <img alt="EveJS 261018.1" src="https://img.shields.io/badge/EveJS-261018.1-ffffff?style=for-the-badge&amp;labelColor=24292f">
   <img alt="Launcher 1.0.53 or Newer" src="https://img.shields.io/badge/Launcher-1.0.53%2B-ffffff?style=for-the-badge&amp;labelColor=24292f">
 </p>
 
@@ -51,7 +51,7 @@
 
 | Requirement | Supported Configuration |
 | :--- | :--- |
-| EveJS | **0.12.9** and **261018.1**, with their original login source |
+| EveJS | **261018.1**, with its original login source |
 | EveJS Launcher | **1.0.53+**; launcher integration verified with **1.0.72** |
 | EVE Client | **Build 3396210**, Windows x64 |
 | Controller Input | Xbox-compatible / XInput devices; other hardware paths remain experimental |
@@ -67,7 +67,7 @@ Direct PlayStation/DualSense support is not verified and is not claimed as suppo
 
 | Check | Behavior |
 | :--- | :--- |
-| Upgrading Or Staying On 0.12.9 | The same mod package accepts both reviewed login sources. Restart the server and log in again after updating. |
+| Updating EveJS | Use the compatible mod package, restart the server, and log in again after updating. |
 | Launcher 1.0.72 | Its version field cannot represent `261018.1`. This package uses its own exact login-source checks during installation, profile preparation and server preload. |
 | Other Or Modified Server Builds | Controller startup is rejected; an unsupported preload leaves the original login untouched. |
 | Saved Preferences | Keep `preferences.json` when replacing the mod. Bindings, profiles and input-mode preferences remain compatible. |

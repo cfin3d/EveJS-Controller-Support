@@ -13,11 +13,6 @@
     "strategy": "loader_rename"
   },
   "restart": "game_server",
-  "compatibility": {
-    "evejsVersions": [
-      "0.12.9"
-    ]
-  },
   "loadBefore": [
     "automining"
   ],

@@ -164,6 +164,11 @@ class ControllerSettings(object):
         self.custom_category, self.custom_search = 'all', ''
         self.command_catalog, self.default_shortcuts, self.catalog_map = [], {}, None
         self.confirming = False
+        self.selection_options = None
+        options = getattr(self.native_selection, 'options', None)
+        if isinstance(options, (tuple, list)) and PANEL_ID not in options:
+            self.selection_options = options
+            self.native_selection.options = type(options)(list(options) + [PANEL_ID])
         self.original_tree, self.original_load = SystemMenu.__dict__['ConstructTreeData'], SystemMenu.__dict__['LoadPanel']
         manager = self
 
@@ -202,6 +207,9 @@ class ControllerSettings(object):
         selected = next((key for key, panel in menu.panelsByID.items() if getattr(panel, 'display', False)), None)
         if selected == PANEL_ID and self.closed:
             selected = self.fallback
+        tree = getattr(menu, 'menuTreeData', None)
+        if callable(getattr(tree, 'RemoveChild', None)):
+            for child in list(tree.children):tree.RemoveChild(child)
         menu.ReconstructLayout(selected)
 
     def visible(self):
@@ -1076,6 +1084,10 @@ class ControllerSettings(object):
             self.cls.LoadPanel = self.original_load
         if self.native_selection.get() == PANEL_ID:
             self.native_selection.set(self.fallback)
+        if self.selection_options is not None:
+            options = self.native_selection.options
+            remaining = type(options)(value for value in options if value != PANEL_ID)
+            self.native_selection.options = self.selection_options if remaining == self.selection_options else remaining
         for menu, panel in self.panels:
             if not getattr(panel, 'destroyed', False) and getattr(menu, 'display', False):
                 self.reconstruct(menu)

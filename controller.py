@@ -1213,9 +1213,11 @@ class Controller(object):
 
     def dispatch_rpc(self, function, *args):
         import uthread
+        epoch = self.custom_epoch
         session = getattr(_builtins, 'session', None)
         identity = tuple(getattr(session, key, None) for key in ('charid', 'shipid', 'solarsystemid'))
         def send():
+            if epoch != self.custom_epoch or self.mode.mode != 'controller' or not self.native.foreground():return
             current = getattr(_builtins, 'session', None)
             if not self.active or identity != tuple(getattr(current, key, None) for key in ('charid', 'shipid', 'solarsystemid')) or getattr(current, 'mutating', False) or getattr(current, 'stationid', None) or getattr(current, 'structureid', None):
                 return

@@ -1,15 +1,19 @@
 "use strict";
 
-// A mod-specific integration for the reviewed EveJS 0.12.9 handshake.
+// A mod-specific integration for reviewed EveJS login handshakes.
 // No client archive changes, RPCs, input-handler replacements, or server source writes.
 const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 const KEY = Symbol.for("evejs.controller.login.v1");
 const BASELINE = "4fc3c37ec83c443c1497a3daba57d7157d05bbe55af3be2d5545b6162398ebc9";
+const BASELINES = Object.freeze([
+  BASELINE, // EveJS 0.12.9
+  "c84cffe20c00cf075a97daa31ca53c435af4f14c814e46d828760dbbb55fb566", // EveJS 261018.1
+]);
 const normalize = source => String(source).replace(/\r\n/g, "\n");
 function supports(source) {
-  return crypto.createHash("sha256").update(normalize(source)).digest("hex") === BASELINE;
+  return BASELINES.includes(crypto.createHash("sha256").update(normalize(source)).digest("hex"));
 }
 
 // Python 2.7 and 3 compatible; all paths come from the launcher's captured
@@ -98,4 +102,4 @@ function install(root, folder, { Module = require("node:module"), global = globa
   return state;
 }
 
-module.exports = { KEY, BASELINE, BOOTSTRAP, normalize, supports, compose, enabled, extension, install };
+module.exports = { KEY, BASELINE, BASELINES, BOOTSTRAP, normalize, supports, compose, enabled, extension, install };

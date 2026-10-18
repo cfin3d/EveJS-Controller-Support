@@ -5,12 +5,12 @@
 <h1 align="center">EveJS Controller Support</h1>
 
 <p align="center">
-  Universal controller support for EveJS, with precision cursor control, camera navigation, and automatic input switching.
+  Controller support for EveJS, with precision cursor control, camera navigation, and automatic input switching.
 </p>
 
 <p align="center">
   <img alt="Status: Unreleased" src="https://img.shields.io/badge/Status-Unreleased-57606a?style=for-the-badge">
-  <img alt="EveJS 0.12.9" src="https://img.shields.io/badge/EveJS-0.12.9-ffffff?style=for-the-badge&amp;labelColor=24292f">
+  <img alt="EveJS 0.12.9 and 261018.1" src="https://img.shields.io/badge/EveJS-0.12.9%20%7C%20261018.1-ffffff?style=for-the-badge&amp;labelColor=24292f">
   <img alt="Launcher 1.0.53 or Newer" src="https://img.shields.io/badge/Launcher-1.0.53%2B-ffffff?style=for-the-badge&amp;labelColor=24292f">
 </p>
 
@@ -42,8 +42,8 @@
 - **Camera and Ship Navigation:** pan, zoom, fly toward camera center, and stop.
 - **Controller Settings:** select a device, customize bindings, and save profiles in EVE's settings menu.
 - **Native Overview Navigation:** focus the original Overview, browse enlarged rows, switch tabs, and use native object menus.
-- **Controller Families:** PlayStation and Steam input paths, with automatic white button icons and a manual style override.
-- **Combat Feedback:** distinct damage vibrations and ship-destruction feedback, with adjustable strength and optional detailed DualSense USB haptics.
+- **Controller Icons:** automatic white button icons and a manual style override.
+- **Combat Feedback:** distinct damage vibrations and ship-destruction feedback, with adjustable strength.
 - **Automatic Input Switching:** move freely between controller and mouse/keyboard controls.
 - **In-Game Runtime:** starts at login; no separate application or tray icon.
 
@@ -51,21 +51,33 @@
 
 | Requirement | Supported Configuration |
 | :--- | :--- |
-| EveJS | **0.12.9** |
+| EveJS | **0.12.9** and **261018.1**, with their original login source |
 | EveJS Launcher | **1.0.53+**; launcher integration verified with **1.0.72** |
 | EVE Client | **Build 3396210**, Windows x64 |
-| Controller Input | Xbox-compatible devices, DualShock/DualSense, and Steam controller input paths |
+| Controller Input | Xbox-compatible / XInput devices; other hardware paths remain experimental |
 | SteamOS / Proton | Experimental; requires running the Windows client and launcher through a compatible setup |
 | Server Backend | Native or Docker |
 
 Launcher **1.0.72** supports both separate and shared EVE settings with this mod. Controller preferences and saved controller profiles remain in the mod folder and apply across accounts using that installation.
 
-PlayStation/Steam hardware and SteamOS/Proton compatibility need community testing. The bundled controller library has been checked with simulated devices; physical-device coverage is not yet verified.
+Direct PlayStation/DualSense support is not verified and is not claimed as supported. Experimental device paths, haptics and SteamOS/Proton require physical hardware testing; simulated-device checks do not establish hardware compatibility.
+
+<details>
+<summary><strong>EveJS Update Compatibility</strong></summary>
+
+| Check | Behavior |
+| :--- | :--- |
+| Upgrading Or Staying On 0.12.9 | The same mod package accepts both reviewed login sources. Restart the server and log in again after updating. |
+| Launcher 1.0.72 | Its version field cannot represent `261018.1`. This package uses its own exact login-source checks during installation, profile preparation and server preload. |
+| Other Or Modified Server Builds | Controller startup is rejected; an unsupported preload leaves the original login untouched. |
+| Saved Preferences | Keep `preferences.json` when replacing the mod. Bindings, profiles and input-mode preferences remain compatible. |
+
+</details>
 
 <details>
 <summary><strong>Controller Connections and Icons</strong></summary>
 
-- **PlayStation:** direct USB/Bluetooth input paths are included. Detected PlayStation devices use matching white symbols and L1/R1/L2/R2 labels in settings and radial prompts.
+- **PlayStation:** direct USB/Bluetooth paths are experimental and unverified. Matching white symbols and L1/R1/L2/R2 labels are available as an icon preference; they do not establish device support.
 - **Steam Deck / Steam Controller:** use gamepad output when launching through Steam Input. On controllers using a trackpad for right-stick functions, map that trackpad to the right joystick in the Steam controller layout.
 - **Button Icons:** **Auto-Detect** follows the active detected controller. Steam Input and other mappers may expose a virtual Xbox device; choose **PlayStation 4**, **PlayStation 5**, or **Steam** manually in **Settings → Controller** when needed.
 - **Multiple Controllers:** Auto-Detect follows controller activity. Use **Identify Controller** or choose a named slot to keep one device selected. Up to 16 connected slots are available; identify it again if connection order changes between sessions.

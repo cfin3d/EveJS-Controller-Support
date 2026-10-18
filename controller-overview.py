@@ -207,6 +207,30 @@ class _OverviewNavigation(object):
     def selected(self):
         return next((node for node in self.nodes() if node.itemID == self.item), None)
 
+    def row_panel(self, node):
+        panel = getattr(node, 'panel', None)
+        if panel is not None and not getattr(panel, 'destroyed', False) and getattr(getattr(panel, 'sr', None), 'node', None) is node:
+            return panel
+
+    def reflow(self, target=None, rebuild=True, retired=()):
+        scroll = self.window.scroll
+        pending = getattr(scroll, 'updatePositionThread', None) is not None
+        # BasicDynamicScroll's synchronous UpdatePosition clears its thread
+        # handle. Cancel the old worker first, and prevent ShowNodeIdx from
+        # creating another worker midway through the same layout transaction.
+        with scroll.KillUpdateThreadAndBlock():
+            if retired:scroll.RemoveNodes(retired, updateScroll=False)
+            if rebuild or retired:scroll.UpdateNodesWidthAndPosition()
+            before = scroll._position
+            if target is not None:
+                nodes = list(scroll.GetNodes())
+                index = next((i for i, node in enumerate(nodes) if node is target), None)
+                if index is not None:scroll.ShowNodeIdx(index)
+            if rebuild or retired or pending or before != scroll._position:
+                # Overview owns entry loading and dynamic data. Reflow only;
+                # loading here can yield into tab/filter updates mid-layout.
+                scroll.UpdatePosition(loadNodes=False)
+
     def context_valid(self):
         return (self.window is not None and self.safe() and self.available(self.window) and
                 self.tab == self.window.GetSelectedTabID() and self.selected() is not None and self.busy is None)
@@ -259,7 +283,7 @@ class _OverviewNavigation(object):
             strip.top = y-cy-3+index if index < 3 else y-cy+height+index-3
 
     def update_rail(self, node):
-        panel = getattr(node, 'panel', None)
+        panel = self.row_panel(node)
         self.watch_row(panel)
         if self.rail and (self.rail[0] is not panel or self.rail[1] is not node or getattr(panel, 'destroyed', False)):
             if not getattr(self.rail[2], 'destroyed', False):self.rail[2].Close()
@@ -393,7 +417,7 @@ class _OverviewNavigation(object):
     def wrap_name(self, node):
         if not self.c.settings['overviewRowExpansion']:
             self.restore_name();return
-        panel = getattr(node, 'panel', None)
+        panel = self.row_panel(node)
         name = getattr(node, 'display_NAME', None)
         label = next((label for label in getattr(panel, 'columnLabels', ())
                       if name and label.text == name and getattr(label, 'columnWidth', 0) > 0), None)
@@ -485,8 +509,8 @@ class _OverviewNavigation(object):
             extra = min(self.c.settings['overviewRowExpansion'], max(0., scroll.sr.clipper.GetAbsolute()[3] - base))
             height = int(round(base + extra * fraction))
             if node.height != height:node.height = height;changed = True
-            panel = getattr(node, 'panel', None)
-            if panel is not None and not getattr(panel, 'destroyed', False) and getattr(getattr(panel, 'sr', None), 'node', None) is node:
+            panel = self.row_panel(node)
+            if panel is not None:
                 panels.add(panel)
                 self.resize_fonts(panel, fraction if extra else 0.)
             if key not in live or goal == 0. and t >= 1.:
@@ -499,12 +523,7 @@ class _OverviewNavigation(object):
                 if not getattr(label, 'destroyed', False) and label.measurer.fontSize == assigned:
                     label.measurer.fontSize = base;label._columnWidthDirty = True;label.text = label.text
                 del self.fonts[key]
-        if changed:
-            scroll.UpdateNodesWidthAndPosition()
-            scroll.UpdatePosition()
-        if target is not None:
-            index = list(scroll.GetNodes()).index(target)
-            scroll.ShowNodeIdx(index)
+        self.reflow(target, rebuild=changed)
         self.wrap_name(target)
         self.update_rail(target)
         self.update_footer()
@@ -523,8 +542,7 @@ class _OverviewNavigation(object):
             if scroll is not None and not getattr(scroll, 'destroyed', False):
                 for node, base, fraction, started, goal in [edit[:5] for edit in self.edits.values()]:
                     node.height = self.base_height(node, base)
-                scroll.UpdateNodesWidthAndPosition()
-                scroll.UpdatePosition()
+                self.reflow()
         self.edits = {}
     def cancel(self, detach=False):
         self.actions, self.action_holds = {}, {}
@@ -564,7 +582,7 @@ class _OverviewNavigation(object):
 
     def animate(self, now):
         node = self.selected()
-        panel = getattr(node, 'panel', None)
+        panel = self.row_panel(node)
         if panel is None or getattr(panel, 'destroyed', False) or not _ec_radial_visible(self.c.ui, panel):return
         dx, dy, dw, dh = self.c.ui.desktop.GetAbsolute()
         sx, sy, sw, sh = self.c.native.bounds()
@@ -591,9 +609,8 @@ class _OverviewNavigation(object):
         group = self.window.tabGroup
         tabs, index = list(group.GetTabs() or ()), group.GetSelectedIdx()
         if len(tabs) < 2 or index is None:return
-        self.restore_fonts()
+        self.restore_layout()
         self.item = None
-        self.layout(now, immediate=True)
         self.serial += 1
         token, window, stamp = self.serial, self.window, self.stamp
         self.busy = token
@@ -618,7 +635,7 @@ class _OverviewNavigation(object):
         self.transition = None
         self.animate(now)
         node = self.selected()
-        panel = getattr(node, 'panel', None)
+        panel = self.row_panel(node)
         if panel is None or not _ec_radial_visible(self.c.ui, panel):return
         self.c.context.observe(set((2,)), now, owner=self)
         self.c.native.buttons(set((2,)))
@@ -630,7 +647,7 @@ class _OverviewNavigation(object):
     def action_entries(self):
         from carbonui.control.contextMenu.menuDataFactory import CreateMenuDataFromRawTuples
         node = self.selected()
-        panel = getattr(node, 'panel', None)
+        panel = self.row_panel(node)
         if panel is None or not _ec_radial_visible(self.c.ui, panel):return {}
         getter = getattr(panel, 'GetMenu', None)
         if not callable(getter):return {}
@@ -777,8 +794,8 @@ class _OverviewNavigation(object):
             pointed = True
             if manual:
                 self.transition = None
-                row = next((node for node in self.nodes() if getattr(node, 'panel', None) is not None and
-                            _ec_radial_visible(self.c.ui, node.panel) and
+                row = next((node for node in self.nodes() if self.row_panel(node) is not None and
+                            _ec_radial_visible(self.c.ui, self.row_panel(node)) and
                             _ec_focus_contains(self.c, self.window.scroll.sr.clipper) and
                             _ec_focus_contains(self.c, node.panel)), None)
                 pointed = row is not None and row.itemID == self.item
@@ -797,6 +814,11 @@ class _OverviewNavigation(object):
             self.blocked &= raw
             mask = raw & ~self.blocked
             if self.loading and not (getattr(self.window, '_ballparkDirty', False) or getattr(self.window, '_scrollEntriesDirty', False)):
+                # Native hover sorting can defer removal after a preset change.
+                # The preset has already rejected these nodes; finish removing
+                # them before focusing the new tab, using the scroll's own API.
+                retired = [node for node in self.window.scroll.GetNodes() if getattr(node, 'leavingOverview', False)]
+                if retired:self.reflow(retired=retired)
                 self.loading = False
             if self.first_pending and not self.loading and self.busy is None:
                 nodes = self.nodes()

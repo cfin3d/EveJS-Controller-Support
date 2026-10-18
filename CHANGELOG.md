@@ -121,6 +121,8 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 
 ### Fixed
 
+- Fix controller Overview scrolling stalling or corrupting visible rows during D-pad navigation. Coordinate row expansion and selection scrolling through the native scroll transaction, cancel pending scroll workers before reflow, and leave entry loading to EVE's Overview updater instead of starting competing updates.
+- Restore focused-row presentation before changing Overview tabs and remove entries already rejected by the new preset after filtering completes, even when pointer movement has frozen native sorting. Require row panels to belong to the selected node before decorating, centering the cursor, opening menus or querying native actions, preventing stale panels from targeting or displaying another object's data.
 - Reject captured combinations exceeding four inputs with a clear settings message. Preserve the existing binding and custom draft, and keep controller polling active instead of raising an input error.
 - Allow camera pan and zoom immediately after login when EVE initially focuses Overview or a native window without a scrollable pane. Keep actual scrollable windows, menus and modal dialogs exclusive of scene camera input.
 - Preserve the existing combat HUD widgets when Select/View opens Neocom, preventing the brief return to the stock HUD while module controls pause.

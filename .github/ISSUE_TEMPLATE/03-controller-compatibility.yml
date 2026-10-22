@@ -45,7 +45,7 @@ body:
     id: environment
     attributes:
       label: Versions and Platform
-      description: Include the mod release or snapshot date/commit, EveJS, launcher, client build, OS/version, Proton if used, and Native/Docker backend. Unknown is fine.
+      description: Include the mod commit or download date, EveJS, launcher, client build, OS/version, Proton if used, and Native/Docker backend. Unknown is fine.
       placeholder: |
         Mod:
         EveJS / Launcher / Client Build:

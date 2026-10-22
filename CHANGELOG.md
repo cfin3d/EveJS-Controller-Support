@@ -1,8 +1,12 @@
 # Changelog
 
-Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**. No release has been published; the initial release will be **1.0.0**.
+Changes are grouped by category. Builds are identified by their Git commit. Download the latest source from `main`, or select a specific commit from the history.
 
-## [Unreleased]
+## [Latest Commits]
+
+### Documentation
+
+- Identify builds by commit and distribute through the source branch. Update download and reporting guidance to use commits or download dates.
 
 ### Compatibility
 
@@ -102,7 +106,6 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 - Keep the enabled combat HUD visible while Overview owns controller focus, including its object context menus and cursor return. Continue native HUD updates with module gestures, cursor module actions and assignment changes paused. Cancel pending module holds and queued actions on entry, preserve module widgets and tap-cycle state, and require fresh inputs before module control resumes. Retain normal cleanup for input takeover, disconnection and invalid game sessions.
 - Adapt the experimental combat HUD to the effective logical UI viewport. Retain the wide layout at 1,280 × 356 logical pixels or larger; use vertically stacked diamonds in each bank when the viewport instead fits 768 × 616. Keep native module sizes, control mappings and per-ship assignments intact. Restore the original HUD without interrupting controller input when neither layout fits.
 - Move Neocom selection from **Hold A** to **Hold RB** to match the default cursor left-click button. Retain the configurable 500 ms activation hold and cyan progress indicator, reset the timer on item changes, activate only once per hold, and require release if RB is already held when opening Neocom. Keep immediate D-pad navigation and **Hold B** cancellation, with B taking priority over RB and no normal clicks or gameplay actions leaking through menu navigation.
-- Set the first public release target to **1.0.0**. Align the testing-build manifest, README and reporting guidance with that target; all changes remain **Unreleased** until publication.
 - Package the controller backend and its runtime/license with the installable mod folder; no companion process or separate library installation is required. Mark PlayStation/Steam physical hardware and SteamOS/Proton coverage as requiring community testing.
 - Rename the shared timing control to **Click / Activation Hold** to cover normal clicks, radial opening, and Neocom RB/B activation. Preserve its stored key and existing values.
 - Reformat Controller settings into spaced sections, paired half-width slider fields with separate value labels, and uniform action/input/clear columns. Apply matching rows to custom bindings and keep modifier/key selection in a compact two-column editor.
@@ -216,4 +219,4 @@ Changes are grouped by release and category. Versions use **MAJOR.MINOR.PATCH**.
 - The current input backend exposes standard XInput controls. Independently exposed rear-button input remains dependent on backend support.
 - Direct PlayStation controller support, including PS5 DualSense, is not yet implemented.
 
-[Unreleased]: https://github.com/cfin3d/EveJS-Controller-Support/commits/main/
+[Latest Commits]: https://github.com/cfin3d/EveJS-Controller-Support/commits/main/

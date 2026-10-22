@@ -16,7 +16,7 @@ Help improve EveJS Controller Support by describing what you observed, how to re
 ## Before You Submit
 
 1. **Search Open and Closed Issues.** If the same problem already exists, add your setup and new evidence there. Link related reports when the behavior differs.
-2. **Check Compatibility and Known Behavior.** Review the [README](../README.md#compatibility) and [Unreleased Changelog](../CHANGELOG.md#unreleased). Include the version you actually tested; updating is helpful but is not required to report a problem.
+2. **Check Compatibility and Known Behavior.** Review the [README](../README.md#compatibility) and [Changelog](../CHANGELOG.md#latest-commits). Include the version you actually tested; updating is helpful but is not required to report a problem.
 3. **Keep Each Report Focused.** Submit one bug or suggestion per issue. A compatibility report can summarize several tested functions and link separate bug reports.
 4. **Use a Specific Title.** State the affected function and visible result. For example: `[Bug] Neocom submenu does not open with D-Pad Right`.
 
@@ -55,7 +55,7 @@ For vibration problems, include the master toggle, event toggles/strengths, **En
 
 | Detail | Where to Look |
 | :--- | :--- |
-| **Mod Version** | The mod entry in the launcher's **Mods** tab. For an unreleased snapshot, also include its download date or Git commit when known. |
+| **Mod Build** | The Git commit you installed, or its download date when the commit is unknown. |
 | **EveJS / Launcher Versions** | Your launcher or installation's version information. Copy the displayed values when available. |
 | **EVE Client Build** | **Settings → About EVE**, or the client version shown on screen. |
 | **Controller Name and Backend** | **Settings → Controller**: copy the selected/detected device name and **Input Backend** label. If the category is missing, state that. |
@@ -64,7 +64,7 @@ For vibration problems, include the master toggle, event toggles/strengths, **En
 | **Input Software** | Steam Input, another mapper, or **Not Used**. Include the layout and whether a trackpad maps to a joystick. |
 | **Server Backend** | **Native**, **Docker**, or **Unknown** for the EveJS server setup. |
 
-An unreleased build may display the planned version **1.0.0**. The download date or commit helps distinguish snapshots that share that number.
+Builds are identified by commit. Include the commit or download date when reporting a problem.
 
 ### Screenshots and Logs
 

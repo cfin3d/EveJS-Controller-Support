@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img alt="Status: Unreleased" src="https://img.shields.io/badge/Status-Unreleased-57606a?style=for-the-badge">
+  <img alt="Status: Source Builds" src="https://img.shields.io/badge/Status-Source_Builds-57606a?style=for-the-badge">
   <img alt="EveJS 261018.1" src="https://img.shields.io/badge/EveJS-261018.1-ffffff?style=for-the-badge&amp;labelColor=24292f">
   <img alt="Launcher 1.0.53 or Newer" src="https://img.shields.io/badge/Launcher-1.0.53%2B-ffffff?style=for-the-badge&amp;labelColor=24292f">
 </p>
@@ -33,7 +33,7 @@
 ---
 
 > [!NOTE]
-> **Unreleased Testing Build.** The first release will be **1.0.0**.
+> **Source Builds.** Download the latest source from [`main`](https://github.com/cfin3d/EveJS-Controller-Support/tree/main), or choose a specific commit. The commit identifies the build; follow changes in the [changelog](CHANGELOG.md). See [Compatibility](#compatibility) for supported and experimental configurations.
 
 ## Features
 

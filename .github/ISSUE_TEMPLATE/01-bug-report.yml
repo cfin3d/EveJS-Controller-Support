@@ -81,9 +81,9 @@ body:
     id: versions
     attributes:
       label: Versions and Platform
-      description: Include the mod release or testing-build date/commit, EveJS, launcher, client build, OS, and server backend. Write Unknown for unavailable details.
+      description: Include the mod commit or download date, EveJS, launcher, client build, OS, and server backend. Write Unknown for unavailable details.
       placeholder: |
-        Mod: Unreleased snapshot, downloaded YYYY-MM-DD / commit if known
+        Mod Commit / Download Date:
         EveJS:
         EveJS Launcher:
         EVE Client Build:

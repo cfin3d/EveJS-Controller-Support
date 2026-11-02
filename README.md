@@ -10,7 +10,7 @@
 
 <p align="center">
   <img alt="Status: Source Builds" src="https://img.shields.io/badge/Status-Source_Builds-57606a?style=for-the-badge">
-  <img alt="EveJS 261018.1" src="https://img.shields.io/badge/EveJS-261018.1-ffffff?style=for-the-badge&amp;labelColor=24292f">
+  <img alt="EveJS 261028.1" src="https://img.shields.io/badge/EveJS-261028.1-ffffff?style=for-the-badge&amp;labelColor=24292f">
   <img alt="Launcher 1.0.53 or Newer" src="https://img.shields.io/badge/Launcher-1.0.53%2B-ffffff?style=for-the-badge&amp;labelColor=24292f">
 </p>
 
@@ -51,8 +51,8 @@
 
 | Requirement | Supported Configuration |
 | :--- | :--- |
-| EveJS | **261018.1**, with its original login source |
-| EveJS Launcher | **1.0.53+**; launcher integration verified with **1.0.72** |
+| EveJS | **261028.1**, with its original login source |
+| EveJS Launcher | **1.0.53+**; launcher integration verified with **1.0.72**; helper protocol and mod format unchanged through **1.0.76** |
 | EVE Client | **Build 3396210**, Windows x64 |
 | Controller Input | Xbox-compatible / XInput devices; other hardware paths remain experimental |
 | SteamOS / Proton | Experimental; requires running the Windows client and launcher through a compatible setup |
@@ -67,8 +67,8 @@ Direct PlayStation/DualSense support is not verified and is not claimed as suppo
 
 | Check | Behavior |
 | :--- | :--- |
-| Updating EveJS | Use the compatible mod package, restart the server, and log in again after updating. |
-| Launcher 1.0.72 | Its version field cannot represent `261018.1`. This package uses its own exact login-source checks during installation, profile preparation and server preload. |
+| Updating EveJS | Open the launcher and let **Mods** refresh before running the EveJS updater in place; Launcher **1.0.74+** then keeps the Mods folder and its settings through the update. Use the compatible mod package, restart the server, and log in again after updating. |
+| Launcher Version Field | Launcher **1.0.72** through **1.0.76** cannot represent calendar versions such as `261028.1` in the optional compatibility field. This package omits that field and uses its own exact login-source checks during installation, profile preparation and server preload. |
 | Other Or Modified Server Builds | Controller startup is rejected; an unsupported preload leaves the original login untouched. |
 | Saved Preferences | Keep `preferences.json` when replacing the mod. Bindings, profiles and input-mode preferences remain compatible. |
 
@@ -127,6 +127,7 @@ mods/
 
 - **Release Downloads:** when available, download a ZIP from [Releases](https://github.com/cfin3d/EveJS-Controller-Support/releases). Extract it and drag the enclosed `evejs-controller` folder into Mods, then follow steps 4–5 above.
 - **Updates:** close EVE and back up `preferences.json`. Replace the mod folder, restore compatible settings according to the changelog, refresh Mods, and restart/log in when requested.
+- **EveJS Updates:** refresh Mods in the launcher before running the EveJS updater, then check [Compatibility](#compatibility) for the matching mod build.
 
 </details>
 
@@ -439,6 +440,7 @@ Use the [Reporting Guidelines](https://github.com/cfin3d/EveJS-Controller-Suppor
 | :--- | :--- |
 | **Mod Missing** | Check the folder layout above, then refresh Mods. |
 | **Input Inactive** | Enable the mod, restart when requested, log in through the launcher, and focus EVE. |
+| **Inactive After an EveJS Update** | The launcher reports an incompatible login source, or the Game console shows `[EveJS Controller] Unsupported handshake; mod inactive.` Use a mod build that lists your EveJS version under [Compatibility](#compatibility). Another mod or tool that edits the server login source also triggers this check. |
 | **Wrong Controller** | Open **Settings → Controller → Identify Controller**, then use the desired device. |
 | **Native Pointer Returns** | Mouse/keyboard activity changes modes. Use controller input to switch back. |
 | **Flight/Stop Unavailable** | Undock and wait for the character/session to be ready. |

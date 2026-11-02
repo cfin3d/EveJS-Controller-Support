@@ -9,7 +9,7 @@ const KEY = Symbol.for("evejs.controller.login.v1");
 const BASELINE = "4fc3c37ec83c443c1497a3daba57d7157d05bbe55af3be2d5545b6162398ebc9";
 const BASELINES = Object.freeze([
   BASELINE, // EveJS 0.12.9
-  "c84cffe20c00cf075a97daa31ca53c435af4f14c814e46d828760dbbb55fb566", // EveJS 261018.1
+  "c84cffe20c00cf075a97daa31ca53c435af4f14c814e46d828760dbbb55fb566", // EveJS 261018.1 and 261028.1 (identical login source)
 ]);
 const normalize = source => String(source).replace(/\r\n/g, "\n");
 function supports(source) {

@@ -127,6 +127,7 @@ mods/
 
 - **Release Downloads:** when available, download a ZIP from [Releases](https://github.com/cfin3d/EveJS-Controller-Support/releases). Extract it and drag the enclosed `evejs-controller` folder into Mods, then follow steps 4–5 above.
 - **Updates:** close EVE and back up `preferences.json`. Replace the mod folder, restore compatible settings according to the changelog, refresh Mods, and restart/log in when requested.
+- **EveJS Updates:** refresh Mods in the launcher before running the EveJS updater, then check [Compatibility](#compatibility) for the matching mod build.
 
 </details>
 
@@ -439,6 +440,7 @@ Use the [Reporting Guidelines](https://github.com/cfin3d/EveJS-Controller-Suppor
 | :--- | :--- |
 | **Mod Missing** | Check the folder layout above, then refresh Mods. |
 | **Input Inactive** | Enable the mod, restart when requested, log in through the launcher, and focus EVE. |
+| **Inactive After an EveJS Update** | The launcher reports an incompatible login source, or the Game console shows `[EveJS Controller] Unsupported handshake; mod inactive.` Use a mod build that lists your EveJS version under [Compatibility](#compatibility). Another mod or tool that edits the server login source also triggers this check. |
 | **Wrong Controller** | Open **Settings → Controller → Identify Controller**, then use the desired device. |
 | **Native Pointer Returns** | Mouse/keyboard activity changes modes. Use controller input to switch back. |
 | **Flight/Stop Unavailable** | Undock and wait for the character/session to be ready. |
